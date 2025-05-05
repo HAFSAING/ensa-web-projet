@@ -1,0 +1,52 @@
+/* root.css */
+
+:root {
+    /* Couleurs principales */
+    --color-1: #16697a;
+    --color-2: #82c0cc;
+    --color-3: #266b96;
+    --color-4: #cae9ff;
+    --color-5: #d4d2d5;
+    --color-5: #F2851F;
+
+    --accent: #e67e22;
+    --success: #27ae60;
+    --danger: #e74c3c;
+    --warning: #f39c12;
+
+    --color-white: #ffffff;
+    --color-dark: #1e1e1e;
+
+    --text-color: #1f2937;
+    --text-muted: #6b7280;
+  }
+  
+*{  margin:0;
+    padding:0;
+    border: 0;
+    outline: 0;
+    appearance: none;
+    list-style:none;
+    text-decoration: none;
+}
+
+
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(to right, #e2e2e2, #c9d6ff);
+    font-family: var(--font-base);
+    font-size: var(--font-size-base);
+    color: var(--color-dark);
+  }
+
+/* -------------------FONT---------------------*/
+.tagesschrift-regular {
+    font-family: "Tagesschrift", system-ui;
+    font-weight: 400;
+    font-style: normal;
+  }
+  
+
+
