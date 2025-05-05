@@ -424,6 +424,7 @@
         <div class="progress-bar" id="progressBar"></div>
     </div>
     
+
     <header>
         <div class="header-content">
             <div class="logo">
@@ -459,6 +460,12 @@
                     <p>Comment nous protégeons et utilisons vos données</p>
                 </div>
             </div>
+            
+            <div style="margin-top: 30px;">
+                <a href="userInscrire.php" class="action-button">
+                    <i class="fas fa-user-plus"></i> Retour à l'inscription
+                </a>
+            </div>
         </div>
         
         <div id="terms-section" class="content-section">
@@ -488,8 +495,8 @@
                 <button class="action-button" onclick="showSection('banner')">
                     <i class="fas fa-arrow-left"></i> Retour aux choix
                 </button>
-                <a href="index.php" class="action-button">
-                    <i class="fas fa-home"></i> Retour à l'accueil
+                <a href="userInscrire.php" class="action-button">
+                    <i class="fas fa-user-plus"></i> Retour à l'inscription
                 </a>
             </div>
         </div>
@@ -535,8 +542,8 @@
                 <button class="action-button" onclick="showSection('banner')">
                     <i class="fas fa-arrow-left"></i> Retour aux choix
                 </button>
-                <a href="index.php" class="action-button">
-                    <i class="fas fa-home"></i> Retour à l'accueil
+                <a href="userInscrire.php" class="action-button">
+                    <i class="fas fa-user-plus"></i> Retour à l'inscription
                 </a>
             </div>
         </div>
@@ -548,7 +555,7 @@
             <div class="footer-nav">
                 <a href="index.php">Accueil</a>
                 <a href="contact.php">Contact</a>
-                <a href="terms&privacy.php">Mentions légales</a>
+                <a href="userterms&privacy.php">Mentions légales</a>
             </div>
         </div>
     </footer>

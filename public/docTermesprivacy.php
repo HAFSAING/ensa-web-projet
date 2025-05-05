@@ -469,7 +469,7 @@
             </div>
             
             <div style="margin-top: 30px;">
-                <a href="docInscrire.html" class="action-button">
+                <a href="docInscrire.php" class="action-button">
                     <i class="fas fa-user-plus"></i> Retour à l'inscription
                 </a>
             </div>
@@ -512,7 +512,7 @@
                 <button class="action-button" onclick="showSection('banner')">
                     <i class="fas fa-arrow-left"></i> Retour aux choix
                 </button>
-                <a href="docInscrire.html" class="action-button">
+                <a href="docInscrire.php" class="action-button">
                     <i class="fas fa-user-plus"></i> Retour à l'inscription
                 </a>
             </div>
@@ -574,7 +574,7 @@
                 <button class="action-button" onclick="showSection('banner')">
                     <i class="fas fa-arrow-left"></i> Retour aux choix
                 </button>
-                <a href="docInscrire.html" class="action-button">
+                <a href="docInscrire.php" class="action-button">
                     <i class="fas fa-user-plus"></i> Retour à l'inscription
                 </a>
             </div>
@@ -616,7 +616,7 @@
                 <button class="action-button" onclick="showSection('banner')">
                     <i class="fas fa-arrow-left"></i> Retour aux choix
                 </button>
-                <a href="docInscrire.html" class="action-button">
+                <a href="docInscrire.php" class="action-button">
                     <i class="fas fa-user-plus"></i> Retour à l'inscription
                 </a>
             </div>
@@ -627,9 +627,9 @@
         <div class="footer-content">
             <p>&copy; 2025 MediStatView - Tous droits réservés</p>
             <div class="footer-nav">
-                <a href="index.html">Accueil</a>
+                <a href="index.php">Accueil</a>
                 <a href="contact.php">Contact</a>
-                <a href="docTermesprivacy.html">Mentions légales</a>
+                <a href="docTermesprivacy.php">Mentions légales</a>
             </div>
         </div>
     </footer>

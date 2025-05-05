@@ -544,7 +544,7 @@
                     <div class="checkbox-group">
                         <label>
                             <input type="checkbox" name="terms" required>
-                            J'accepte les <a href="terms&privacy.html"> conditions d'utilisation et la politique de confidentialité</a>  de MediStatView
+                            J'accepte les <a href="usertermes&privacy.php"> conditions d'utilisation et la politique de confidentialité</a>  de MediStatView
                         </label>
                     </div>
 
@@ -562,7 +562,7 @@
                     <button type="submit" class="register-btn">Créer mon compte</button>
 
                     <div class="login-link">
-                        Vous avez déjà un compte? <a href="userConnecter.html">Se connecter</a>
+                        Vous avez déjà un compte? <a href="userConnecter.php">Se connecter</a>
                     </div>
                 </form>
             </div>

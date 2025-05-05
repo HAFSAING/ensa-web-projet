@@ -420,11 +420,11 @@
 
                 <div class="register-box">
                     <h3>Première connexion à l'espace médecin ?</h3>
-                    <a href="doctor-register.php"><button class="register-btn">Demander un accès</button></a>
+                    <a href="docInscrire.php"><button class="register-btn">Demander un accès</button></a>
                 </div>
 
                 <div style="text-align: center; margin-top: 15px;">
-                    <a href="patient-login.php" class="patient-portal-link">Accéder au portail patient</a>
+                    <a href="userInscrire.php" class="patient-portal-link">Accéder au portail patient</a>
                 </div>
             </div>
         </div>

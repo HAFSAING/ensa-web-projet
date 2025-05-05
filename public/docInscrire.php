@@ -408,7 +408,7 @@
                 <h1>Demande d'accès médecin</h1>
                 <p class="welcome-text">Complétez ce formulaire pour demander un accès à la plateforme MediStatView pour les professionnels de santé au Maroc</p>
 
-                <form id="registrationForm" action="docInscrire.html" method="post" enctype="multipart/form-data">
+                <form id="registrationForm" action="docInscrire.php" method="post" enctype="multipart/form-data">
                     <h2 class="section-title">Informations personnelles</h2>
                     
                     <div class="form-row">
@@ -551,7 +551,7 @@
                             <input type="checkbox" id="terms_agree" name="terms_agree" required>
                             <label for="terms_agree">
                                 J'accepte les 
-                                <a href="docTermesprivacy.html">
+                                <a href="docTermesprivacy.php">
                                   conditions générales d'utilisation et la politique de confidentialité
                                 </a> 
                                 de MediStatView. Je certifie être inscrit(e) à l'Ordre National des Médecins et autorise la vérification de mes informations professionnelles.
@@ -564,7 +564,7 @@
                 </form>
 
                 <div class="login-link">
-                    <a href="docConnecter.html">Vous avez déjà un compte ? Connectez-vous</a>
+                    <a href="docConnecter.php">Vous avez déjà un compte ? Connectez-vous</a>
                 </div>
             </div>
         </div>
