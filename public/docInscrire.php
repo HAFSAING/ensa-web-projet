@@ -1,3 +1,232 @@
+<?php
+// Démarrage de la session au début du fichier
+session_start();
+
+// Inclure le fichier de configuration de la base de données
+require_once 'config/database.php';
+
+// Définir une fonction pour connecter à la base de données si elle n'existe pas déjà
+if (!function_exists('connectDB')) {
+    function connectDB() {
+        try {
+            $pdo = new PDO("mysql:host=localhost;dbname=medistatview;charset=utf8mb4", "votre_utilisateur", "votre_mot_de_passe");
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            return $pdo;
+        } catch (PDOException $e) {
+            die("Erreur de connexion à la base de données: " . $e->getMessage());
+        }
+    }
+}
+
+// Traitement du formulaire
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $pdo = connectDB();
+
+    $required_fields = [
+        'civilite', 'specialite', 'nom', 'prenom', 'cin', 'date_naissance', 
+        'num_inpe', 'num_ordre', 'adresse_cabinet', 'ville', 
+        'telephone_cabinet', 'telephone_mobile', 'email', 'password', 'confirm_password'
+    ];
+
+    $errors = [];
+
+    // Vérification des champs obligatoires
+    foreach ($required_fields as $field) {
+        if (empty($_POST[$field])) {
+            $errors[] = "Le champ $field est requis.";
+        }
+    }
+
+    // Vérifier que les mots de passe correspondent
+    if ($_POST['password'] !== $_POST['confirm_password']) {
+        $errors[] = "Les mots de passe ne correspondent pas.";
+    }
+
+    // Vérifier que le format de l'email est valide
+    if (!filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
+        $errors[] = "Format d'adresse email invalide.";
+    }
+
+    // Vérifier que l'email n'est pas déjà utilisé
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM medecins WHERE email = ?");
+    $stmt->execute([$_POST['email']]);
+    if ($stmt->fetchColumn() > 0) {
+        $errors[] = "Cette adresse email est déjà utilisée.";
+    }
+
+    // Vérifier que le CIN n'est pas déjà utilisé
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM medecins WHERE cin = ?");
+    $stmt->execute([$_POST['cin']]);
+    if ($stmt->fetchColumn() > 0) {
+        $errors[] = "Ce numéro de CIN est déjà utilisé.";
+    }
+
+    // Vérifier que le numéro INPE n'est pas déjà utilisé
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM medecins WHERE num_inpe = ?");
+    $stmt->execute([$_POST['num_inpe']]);
+    if ($stmt->fetchColumn() > 0) {
+        $errors[] = "Ce numéro INPE est déjà utilisé.";
+    }
+
+    // Vérifier que le numéro d'ordre n'est pas déjà utilisé
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM medecins WHERE num_ordre = ?");
+    $stmt->execute([$_POST['num_ordre']]);
+    if ($stmt->fetchColumn() > 0) {
+        $errors[] = "Ce numéro d'ordre est déjà utilisé.";
+    }
+
+    // Gérer l'upload de la carte professionnelle
+    $carte_professionnelle_path = null;
+    if (isset($_FILES['carte_professionnelle']) && $_FILES['carte_professionnelle']['error'] == 0) {
+        $allowed = ['pdf', 'jpg', 'jpeg', 'png'];
+        $filename = $_FILES['carte_professionnelle']['name'];
+        $filesize = $_FILES['carte_professionnelle']['size'];
+        
+        // Vérifier l'extension du fichier
+        $ext = pathinfo($filename, PATHINFO_EXTENSION);
+        if (!in_array(strtolower($ext), $allowed)) {
+            $errors[] = "Format de fichier non autorisé. Formats acceptés: PDF, JPG, JPEG, PNG.";
+        }
+        
+        // Vérifier la taille du fichier (2MB max)
+        if ($filesize > 2097152) {
+            $errors[] = "La taille du fichier ne doit pas dépasser 2MB.";
+        }
+        
+        if (empty($errors)) {
+            // Générer un nom de fichier unique
+            $new_filename = uniqid('carte_') . '.' . $ext;
+            $upload_dir = 'uploads/cartes_pro/';
+            
+            // Créer le répertoire s'il n'existe pas
+            if (!file_exists($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+            
+            $destination = $upload_dir . $new_filename;
+            
+            // Déplacer le fichier uploadé
+            if (!move_uploaded_file($_FILES['carte_professionnelle']['tmp_name'], $destination)) {
+                $errors[] = "Erreur lors de l'upload du fichier.";
+            } else {
+                $carte_professionnelle_path = $destination;
+            }
+        }
+    } else {
+        if ($_FILES['carte_professionnelle']['error'] != 4) { // 4 signifie qu'aucun fichier n'a été téléchargé
+            $errors[] = "Erreur lors de l'upload du fichier: code " . $_FILES['carte_professionnelle']['error'];
+        } else {
+            $errors[] = "Veuillez télécharger votre carte professionnelle.";
+        }
+    }
+
+    // S'il n'y a pas d'erreurs, procéder à l'inscription
+    if (empty($errors)) {
+        try {
+            // Début de la transaction
+            $pdo->beginTransaction();
+            
+            // 1. Récupérer l'ID de la spécialité ou l'insérer
+            $specialite_nom = $_POST['specialite'];
+            $stmt = $pdo->prepare("SELECT id FROM specialites WHERE nom = ?");
+            $stmt->execute([$specialite_nom]);
+            $specialite_id = $stmt->fetchColumn();
+            
+            if (!$specialite_id) {
+                $stmt = $pdo->prepare("INSERT INTO specialites (nom) VALUES (?)");
+                $stmt->execute([$specialite_nom]);
+                $specialite_id = $pdo->lastInsertId();
+            }
+            
+            // 2. Récupérer l'ID de la ville ou l'insérer
+            $ville_nom = $_POST['ville'];
+            $code_postal = isset($_POST['code_postal']) ? $_POST['code_postal'] : '';
+            
+            $stmt = $pdo->prepare("SELECT id FROM villes WHERE nom = ?");
+            $stmt->execute([$ville_nom]);
+            $ville_id = $stmt->fetchColumn();
+            
+            if (!$ville_id) {
+                $stmt = $pdo->prepare("INSERT INTO villes (nom, code_postal) VALUES (?, ?)");
+                $stmt->execute([$ville_nom, $code_postal]);
+                $ville_id = $pdo->lastInsertId();
+            }
+            
+            // 3. Convertir la civilité au format de l'énumération dans la base de données
+            $civilite = ($_POST['civilite'] === 'dr') ? 'Dr.' : 'Pr.';
+            
+            // 4. Hacher le mot de passe
+            $password_hash = password_hash($_POST['password'], PASSWORD_DEFAULT);
+            
+            // 5. Insérer le médecin dans la base de données
+            $stmt = $pdo->prepare("
+                INSERT INTO medecins (
+                    civilite, nom, prenom, cin, date_naissance, specialite_id, 
+                    num_inpe, num_ordre, carte_professionnelle, adresse_cabinet, 
+                    ville_id, telephone_cabinet, telephone_mobile, email, password, statut
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'en_attente')
+            ");
+            
+            $stmt->execute([
+                $civilite,
+                $_POST['nom'],
+                $_POST['prenom'],
+                $_POST['cin'],
+                $_POST['date_naissance'],
+                $specialite_id,
+                $_POST['num_inpe'],
+                $_POST['num_ordre'],
+                $carte_professionnelle_path,
+                $_POST['adresse_cabinet'],
+                $ville_id,
+                $_POST['telephone_cabinet'],
+                $_POST['telephone_mobile'],
+                $_POST['email'],
+                $password_hash
+            ]);
+            
+            // Confirmer la transaction
+            $pdo->commit();
+            
+            // 6. Créer une notification pour l'administrateur
+            $medecin_id = $pdo->lastInsertId();
+            $notification_message = "Nouvelle demande d'inscription médecin: Dr. " . $_POST['nom'] . " " . $_POST['prenom'];
+            
+            $stmt = $pdo->prepare("
+                INSERT INTO notifications (
+                    utilisateur_id, type_utilisateur, titre, message, lien
+                ) VALUES (1, 'medecin', 'Nouvelle inscription', ?, '/admin/medecins/verification')
+            ");
+            $stmt->execute([$notification_message]);
+            
+            // Rediriger vers une page de confirmation
+            $_SESSION['inscription_success'] = true;
+            header("Location: docConfirmation.php");
+            exit;
+            
+        } catch (PDOException $e) {
+            // En cas d'erreur, annuler la transaction
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $errors[] = "Erreur lors de l'inscription: " . $e->getMessage();
+        }
+    }
+    
+    // S'il y a des erreurs, les stocker dans la session
+    if (!empty($errors)) {
+        $_SESSION['inscription_errors'] = $errors;
+        $_SESSION['form_data'] = $_POST; // Sauvegarder les données du formulaire
+        
+        // Rediriger vers le formulaire
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit;
+    }
+}
+
+// Début du HTML
+?>
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -407,6 +636,20 @@
 
                 <h1>Demande d'accès médecin</h1>
                 <p class="welcome-text">Complétez ce formulaire pour demander un accès à la plateforme MediStatView pour les professionnels de santé au Maroc</p>
+                <?php if (isset($_SESSION['inscription_errors']) && !empty($_SESSION['inscription_errors'])): ?>
+                <div class="error-container">
+                    <h3>Erreurs:</h3>
+                    <ul>
+                        <?php foreach ($_SESSION['inscription_errors'] as $error): ?>
+                            <li><?php echo htmlspecialchars($error); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+                <?php 
+                // Nettoyer la session après affichage
+                unset($_SESSION['inscription_errors']); 
+                ?>
+                <?php endif; ?>
 
                 <form id="registrationForm" action="docInscrire.php" method="post" enctype="multipart/form-data">
                     <h2 class="section-title">Informations personnelles</h2>
@@ -604,217 +847,7 @@
             document.getElementById('carte_fichier_nom').textContent = fileName;
         });
     </script>
+
 </body>
 </html>
 
-
-
-
-<?php
-// Inclure le fichier de configuration de la base de données
-require_once 'config/database.php';
-
-session_start();
-
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $pdo = connectDB();
-
-    $required_fields = [
-        'civilite', 'specialite', 'nom', 'prenom', 'cin', 'date_naissance', 
-        'num_inpe', 'num_ordre', 'adresse_cabinet', 'ville', 'code_postal',
-        'telephone_cabinet', 'telephone_mobile', 'email', 'password', 'confirm_password'
-    ];
-
-    $errors = [];
-
-    foreach ($required_fields as $field) {
-        if (empty($_POST[$field])) {
-            $errors[] = "Le champ $field est requis.";
-        }
-    }
-
-    // Vérifier que les mots de passe correspondent
-    if ($_POST['password'] !== $_POST['confirm_password']) {
-        $errors[] = "Les mots de passe ne correspondent pas.";
-    }
-
-    // Vérifier que le format de l'email est valide
-    if (!filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
-        $errors[] = "Format d'adresse email invalide.";
-    }
-
-    // Vérifier que l'email n'est pas déjà utilisé
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM medecins WHERE email = ?");
-    $stmt->execute([$_POST['email']]);
-    if ($stmt->fetchColumn() > 0) {
-        $errors[] = "Cette adresse email est déjà utilisée.";
-    }
-
-    // Vérifier que le CIN n'est pas déjà utilisé
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM medecins WHERE cin = ?");
-    $stmt->execute([$_POST['cin']]);
-    if ($stmt->fetchColumn() > 0) {
-        $errors[] = "Ce numéro de CIN est déjà utilisé.";
-    }
-
-    // Vérifier que le numéro INPE n'est pas déjà utilisé
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM medecins WHERE num_inpe = ?");
-    $stmt->execute([$_POST['num_inpe']]);
-    if ($stmt->fetchColumn() > 0) {
-        $errors[] = "Ce numéro INPE est déjà utilisé.";
-    }
-
-    // Vérifier que le numéro d'ordre n'est pas déjà utilisé
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM medecins WHERE num_ordre = ?");
-    $stmt->execute([$_POST['num_ordre']]);
-    if ($stmt->fetchColumn() > 0) {
-        $errors[] = "Ce numéro d'ordre est déjà utilisé.";
-    }
-
-    // Gérer l'upload de la carte professionnelle
-    $carte_professionnelle_path = null;
-    if (isset($_FILES['carte_professionnelle']) && $_FILES['carte_professionnelle']['error'] == 0) {
-        $allowed = ['pdf', 'jpg', 'jpeg', 'png'];
-        $filename = $_FILES['carte_professionnelle']['name'];
-        $filesize = $_FILES['carte_professionnelle']['size'];
-        $filetype = $_FILES['carte_professionnelle']['type'];
-        
-        // Vérifier l'extension du fichier
-        $ext = pathinfo($filename, PATHINFO_EXTENSION);
-        if (!in_array(strtolower($ext), $allowed)) {
-            $errors[] = "Format de fichier non autorisé. Formats acceptés: PDF, JPG, JPEG, PNG.";
-        }
-        
-        // Vérifier la taille du fichier (2MB max)
-        if ($filesize > 2097152) {
-            $errors[] = "La taille du fichier ne doit pas dépasser 2MB.";
-        }
-        
-        if (empty($errors)) {
-            // Générer un nom de fichier unique
-            $new_filename = uniqid('carte_') . '.' . $ext;
-            $upload_dir = 'uploads/cartes_pro/';
-            
-            // Créer le répertoire s'il n'existe pas
-            if (!file_exists($upload_dir)) {
-                mkdir($upload_dir, 0777, true);
-            }
-            
-            $destination = $upload_dir . $new_filename;
-            
-            // Déplacer le fichier uploadé
-            if (!move_uploaded_file($_FILES['carte_professionnelle']['tmp_name'], $destination)) {
-                $errors[] = "Erreur lors de l'upload du fichier.";
-            } else {
-                $carte_professionnelle_path = $destination;
-            }
-        }
-    } else {
-        $errors[] = "Veuillez télécharger votre carte professionnelle.";
-    }
-
-    // S'il n'y a pas d'erreurs, procéder à l'inscription
-    if (empty($errors)) {
-        try {
-            // Vérifier si la spécialité existe, sinon l'ajouter
-            $stmt = $pdo->prepare("SELECT id FROM specialites WHERE nom = ?");
-            $stmt->execute([$_POST['specialite']]);
-            $specialite_id = $stmt->fetchColumn();
-            
-            if (!$specialite_id) {
-                $stmt = $pdo->prepare("INSERT INTO specialites (nom) VALUES (?)");
-                $stmt->execute([$_POST['specialite']]);
-                $specialite_id = $pdo->lastInsertId();
-            }
-            
-            // Vérifier si la ville existe, sinon l'ajouter
-            $stmt = $pdo->prepare("SELECT id FROM villes WHERE nom = ?");
-            $stmt->execute([$_POST['ville']]);
-            $ville_id = $stmt->fetchColumn();
-            
-            if (!$ville_id) {
-                $stmt = $pdo->prepare("INSERT INTO villes (nom, code_postal) VALUES (?, ?)");
-                $stmt->execute([$_POST['ville'], $_POST['code_postal']]);
-                $ville_id = $pdo->lastInsertId();
-            }
-            
-            // Hacher le mot de passe
-            $password_hash = password_hash($_POST['password'], PASSWORD_DEFAULT);
-            
-            // Insérer le médecin dans la base de données
-            $stmt = $pdo->prepare("
-                INSERT INTO medecins (
-                    civilite, nom, prenom, cin, date_naissance, specialite_id, 
-                    num_inpe, num_ordre, carte_professionnelle, adresse_cabinet, 
-                    ville_id, telephone_cabinet, telephone_mobile, email, password, statut
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'en_attente')
-            ");
-            
-            $stmt->execute([
-                $_POST['civilite'],
-                $_POST['nom'],
-                $_POST['prenom'],
-                $_POST['cin'],
-                $_POST['date_naissance'],
-                $specialite_id,
-                $_POST['num_inpe'],
-                $_POST['num_ordre'],
-                $carte_professionnelle_path,
-                $_POST['adresse_cabinet'],
-                $ville_id,
-                $_POST['telephone_cabinet'],
-                $_POST['telephone_mobile'],
-                $_POST['email'],
-                $password_hash
-            ]);
-            
-            // Rediriger vers une page de confirmation
-            $_SESSION['inscription_success'] = true;
-            header("Location: docConfirmation.php");
-            exit;
-            
-        } catch (PDOException $e) {
-            $errors[] = "Erreur lors de l'inscription: " . $e->getMessage();
-        }
-    }
-    
-    // S'il y a des erreurs, les stocker dans la session
-    if (!empty($errors)) {
-        $_SESSION['inscription_errors'] = $errors;
-        $_SESSION['form_data'] = $_POST; // Sauvegarder les données du formulaire
-        header("Location: docInscrire.php");
-        exit;
-    }
-}
-
-?>
-
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inscription Médecin - MediStatView</title>
-    <!-- Votre CSS ici -->
-</head>
-<body>
-    <!-- Afficher les erreurs s'il y en a -->
-    <?php if (isset($_SESSION['inscription_errors']) && !empty($_SESSION['inscription_errors'])): ?>
-        <div class="error-container" style="background-color: #f8d7da; color: #721c24; padding: 10px; margin-bottom: 20px; border-radius: 5px;">
-            <h3>Erreurs:</h3>
-            <ul>
-                <?php foreach ($_SESSION['inscription_errors'] as $error): ?>
-                    <li><?php echo $error; ?></li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
-        <?php 
-        // Nettoyer la session
-        unset($_SESSION['inscription_errors']); 
-        ?>
-    <?php endif; ?>
-
-    <!-- Le reste de votre formulaire HTML ici -->
-    <!-- Vous pouvez récupérer le contenu du formulaire depuis votre fichier HTML original -->
-</body>
-</html>
