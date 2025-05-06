@@ -29,73 +29,211 @@
             line-height: 1.6;
             color: var(--text-dark);
         }
-        
-        /* Header & Navigation */
-        header {
-            background-color: var(--primary-color);
-            color: var(--text-light);
-            padding: 1rem 2rem;
-            box-shadow: var(--shadow);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 1rem;
-        }
-        
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .logo {
-            display: flex;
-            align-items: center;
-            text-decoration: none;
-            color: var(--text-light);
-        }
-        
-        .logo-icon {
-            background-color: var(--secondary-color);
-            padding: 0.6rem;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 0.8rem;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-        
-        .logo-triangle {
-            width: 0;
-            height: 0;
-            border-top: 12px solid transparent;
-            border-bottom: 12px solid transparent;
-            border-left: 18px solid var(--accent-color1);
-        }
-        
-        .logo-text {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .logo-main {
-            font-size: 1.8rem;
-            font-weight: bold;
-            letter-spacing: 0.5px;
-        }
-        
-        .logo-sub {
-            font-size: 0.8rem;
-            letter-spacing: 1px;
-            opacity: 0.9;
-        }
-        
+                
+
+
+/* Styles pour le header avec navigation et icônes */
+header {
+    background-color: var(--primary-color);
+    color: var(--text-light);
+    padding: 1rem 2rem;
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+
+/* Navigation principale */
+.main-nav {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+}
+
+.nav-list {
+    display: flex;
+    list-style: none;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.nav-item {
+    position: relative;
+}
+
+.nav-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: var(--text-light);
+    text-decoration: none;
+    padding: 0.7rem 1rem;
+    font-weight: 500;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.nav-link i {
+    font-size: 1.3rem;
+    margin-bottom: 0.3rem;
+    color: var(--accent-color2);
+    transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-link:hover i {
+    color: var(--accent-color1);
+    transform: translateY(-2px);
+}
+
+.nav-link.active {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.nav-link.active i {
+    color: var(--accent-color1);
+}
+
+.nav-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 3px;
+    background-color: var(--accent-color1);
+    border-radius: 10px;
+}
+
+.nav-buttons {
+    display: flex;
+    gap: 1rem;
+}
+
+.btn {
+    padding: 0.7rem 1.4rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 2px solid var(--text-light);
+    color: var(--text-light);
+}
+
+.btn-outline:hover {
+    background-color: rgba(255,255,255,0.1);
+    transform: translateY(-2px);
+}
+
+.btn-primary {
+    background-color: var(--accent-color1);
+    color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: #6aa889;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* Responsive design pour le header */
+@media (max-width: 992px) {
+    .header-content {
+        flex-direction: column;
+        padding: 1rem 0;
+    }
+    
+    .main-nav {
+        order: 3;
+        width: 100%;
+        margin-top: 1rem;
+    }
+    
+    .nav-list {
+        justify-content: space-around;
+        width: 100%;
+    }
+    
+    .nav-link {
+        padding: 0.5rem 0.8rem;
+        font-size: 0.9rem;
+    }
+    
+    .nav-link i {
+        font-size: 1.1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .nav-list {
+        flex-wrap: wrap;
+        gap: 0.2rem;
+    }
+    
+    .nav-item {
+        flex-basis: 33.333%;
+    }
+    
+    .nav-buttons {
+        width: 100%;
+        justify-content: center;
+        margin-top: 1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .nav-item {
+        flex-basis: 50%;
+    }
+    
+    .nav-link {
+        font-size: 0.8rem;
+    }
+    
+    .btn {
+        padding: 0.6rem 1rem;
+        font-size: 0.9rem;
+    }
+}
+
+
+
+
+
         .nav-buttons {
             display: flex;
             gap: 1rem;
@@ -879,30 +1017,52 @@
                 gap: 0.5rem;
             }
             
-            .legal-links a {
-                display: block;
-            }
         }
 
     </style>
 </head>
 <body>
+
+    <!-- Header avec navigation et icônes -->
     <header>
         <div class="container">
             <div class="header-content">
-                <a href="#" class="logo">
-                    <div class="logo-icon">
-                        <div class="logo-triangle"></div>
-                    </div>
-                    <div class="logo-text">
-                        <div class="logo-main">MediStatView</div>
-                        <div class="logo-sub">VOTRE SANTÉ</div>
-                    </div>
-                </a>
-                <div class="nav-buttons">
-                    <button class="btn btn-outline" onclick="openModal('loginModal')">Se connecter</button>
-                    <button class="btn btn-primary" onclick="openModal('registerModal')">S'inscrire</button>
-                </div>
+                        <svg width="180" height="50" viewBox="0 0 180 50">
+                            <rect x="10" y="15" width="20" height="20" fill="#77c4a0" />
+                            <polygon points="30,15 40,25 30,35" fill="#9fdec0" />
+                            <text x="50" y="25" fill="#ffffff" font-size="18" font-weight="bold">MediStatView</text>
+                            <text x="50" y="40" fill="#9fdec0" font-size="12">SERVICES</text>
+                        </svg>
+
+                <nav class="main-nav">
+                    <ul class="nav-list">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link active">
+                                <i class="fas fa-user-md"></i>
+                                <span>Médecin</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-pills"></i>
+                                <span>Pharmacie</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-question-circle"></i>
+                                <span>Questions</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-book-medical"></i>
+                                <span>Magazine</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+
             </div>
         </div>
     </header>
@@ -1000,7 +1160,7 @@
             <div class="footer-column footer-links-column">
                 <h3>Liens Rapides</h3>
                 <ul class="footer-links">
-                    <li><a href="#">Accueil</a></li>
+                    <li><a href="index.php">Accueil</a></li>
                     <li><a href="#features">Nos Services</a></li>
                     <li><a href="#access-cards">Espaces Personnalisés</a></li>
                     <li><a href="#">FAQ</a></li>
@@ -1012,8 +1172,8 @@
             <div class="footer-column footer-contact">
                 <h3>Contact</h3>
                 <p><span class="contact-icon">📍</span> 123 Avenue de la Santé, 75001 Paris</p>
-                <p><span class="contact-icon">📞</span> +33 1 23 45 67 89</p>
-                <p><span class="contact-icon">✉️</span> contact@medistatview.fr</p>
+                <p><span class="contact-icon">📞</span> +212 5 23 45 67 89</p>
+                <p><span class="contact-icon">✉️</span> contact@gmail.com</p>
                 <p><span class="contact-icon">🕒</span> Lun - Ven: 9h00 - 18h00</p>
             </div>
             
@@ -1035,11 +1195,6 @@
         
         <div class="copyright">
             <p>&copy; 2025 MediStatView. Tous droits réservés.</p>
-            <div class="legal-links">
-                <a href="#">Mentions Légales</a> | 
-                <a href="#">Politique de Confidentialité</a> | 
-                <a href="#">Conditions d'Utilisation</a>
-            </div>
         </div>
     </footer>
 
