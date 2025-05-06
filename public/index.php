@@ -1037,7 +1037,7 @@ header {
                 <nav class="main-nav">
                     <ul class="nav-list">
                         <li class="nav-item">
-                            <a href="#" class="nav-link active">
+                            <a href="docFilterMedcin.php" class="nav-link active">
                                 <i class="fas fa-user-md"></i>
                                 <span>Médecin</span>
                             </a>
