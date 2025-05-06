@@ -3,7 +3,7 @@
 session_start();
 
 // Inclure le fichier de configuration de la base de données
-require_once 'config/database.php';
+require_once __DIR__ . '/../config/database.php';
 
 // Définir une fonction pour connecter à la base de données si elle n'existe pas déjà
 if (!function_exists('connectDB')) {

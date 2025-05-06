@@ -1,14 +1,10 @@
 <?php
-/**
- * Traitement de la connexion pour l'espace médecin
- * Ce script gère l'authentification des utilisateurs médecins
- */
 
 // Démarrage de la session
 session_start();
 
 // Inclusion du fichier de connexion à la base de données
-require_once 'database.php';
+require_once __DIR__ . '/../config/database.php';
 
 // Initialisation des variables de message d'erreur
 $error_message = "";
