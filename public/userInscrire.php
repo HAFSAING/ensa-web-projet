@@ -1,42 +1,141 @@
 <?php
-// public/userInscrire.php
+// Démarrage de la session au début du fichier
+session_start();
 
+// Inclure le fichier de configuration de la base de données
 require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../src/Controllers/PatientController.php';
 
-// Initialiser le contrôleur
-$patientController = new PatientController();
+$old = $_SESSION['form_data'] ?? [];
+$errors = $_SESSION['inscription_errors'] ?? [];
+unset($_SESSION['inscription_errors']);
+unset($_SESSION['form_data']);
 
-// Si le formulaire est soumis, traiter l'inscription
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $patientController->register();
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $pdo = getDatabaseConnection();
+
+    $required_fields = [
+        'nom', 'prenom', 'cin', 'date_naissance', 'sexe',
+        'email', 'telephone', 'username', 'password', 'confirm_password'
+    ];
+
+    $errors = [];
+
+    // Vérification des champs obligatoires
+    foreach ($required_fields as $field) {
+        if (empty($_POST[$field])) {
+            $errors[] = "Le champ $field est requis.";
+        }
+    }
+
+    // Vérifier que les mots de passe correspondent
+    if ($_POST['password'] !== $_POST['confirm_password']) {
+        $errors[] = "Les mots de passe ne correspondent pas.";
+    }
+
+    // Vérifier que le format de l'email est valide
+    if (!filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
+        $errors[] = "Format d'adresse email invalide.";
+    }
+
+    // Vérifier que l'email n'est pas déjà utilisé
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM patients WHERE email = ?");
+    $stmt->execute([$_POST['email']]);
+    if ($stmt->fetchColumn() > 0) {
+        $errors[] = "Cette adresse email est déjà utilisée.";
+    }
+
+    // Vérifier que le CIN n'est pas déjà utilisé
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM patients WHERE cin = ?");
+    $stmt->execute([$_POST['cin']]);
+    if ($stmt->fetchColumn() > 0) {
+        $errors[] = "Ce numéro de CIN est déjà utilisé.";
+    }
+
+    // Vérifier que le nom d'utilisateur n'est pas déjà utilisé
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM patients WHERE username = ?");
+    $stmt->execute([$_POST['username']]);
+    if ($stmt->fetchColumn() > 0) {
+        $errors[] = "Ce nom d'utilisateur est déjà pris.";
+    }
+    if (!empty($_POST['security_question']) && empty($_POST['security_answer'])) {
+        $errors[] = "Veuillez fournir une réponse à la question de sécurité.";
+    }
+    // Vérifier l'acceptation des conditions
+    if (!isset($_POST['terms'])) {
+        $errors[] = "Vous devez accepter les conditions d'utilisation.";
+    }
+
+    // S'il n'y a pas d'erreurs, procéder à l'inscription
+    if (empty($errors)) {
+        try {
+            // Début de la transaction
+            $pdo->beginTransaction();
+            
+            // 1. Récupérer l'ID de la ville si sélectionnée
+            $ville_id = null;
+            if (!empty($_POST['ville_id'])) {
+                $ville_id = $_POST['ville_id'];
+            }
+            
+            // 2. Hacher le mot de passe
+            $password_hash = password_hash($_POST['password'], PASSWORD_DEFAULT);
+            
+            // 3. Insérer le patient dans la base de données
+            $stmt = $pdo->prepare("
+                INSERT INTO patients (
+                    nom, prenom, cin, date_naissance, sexe, email, 
+                    telephone, adresse, ville_id, mutuelle, 
+                    username, password, security_question, security_answer,
+                    notifications, statut
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'en_attente')
+            ");
+            
+            $stmt->execute([
+                $_POST['nom'],
+                $_POST['prenom'],
+                $_POST['cin'],
+                $_POST['date_naissance'],
+                $_POST['sexe'],
+                $_POST['email'],
+                $_POST['telephone'],
+                $_POST['adresse'] ?? null,
+                $ville_id,
+                $_POST['mutuelle'] ?? null,
+                $_POST['username'],
+                $password_hash,
+                $_POST['security_question'] ?? null,
+                $_POST['security_answer'] ?? null,
+                isset($_POST['notifications']) ? 1 : 0
+            ]);
+            
+            // Confirmer la transaction
+            $pdo->commit();
+            
+            // Rediriger vers une page de confirmation
+            $_SESSION['inscription_success'] = true;
+            header("Location: userConfirmation.php");
+            exit;
+            
+        } catch (PDOException $e) {
+            // En cas d'erreur, annuler la transaction
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $errors[] = "Erreur lors de l'inscription: " . $e->getMessage();
+        }
+    }
+    
+    // S'il y a des erreurs, les stocker dans la session
+    if (!empty($errors)) {
+        $_SESSION['inscription_errors'] = $errors;
+        $_SESSION['form_data'] = $_POST; // Sauvegarder les données du formulaire
+        
+        // Rediriger vers le formulaire
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit;
+    }
 }
 
-// Récupérer les éventuelles erreurs et anciennes valeurs
-$session = new Session();
-$errors = $session->get('errors', []);
-$old = $session->get('old_input', []);
-$session->unset('errors');
-$session->unset('old_input');
-
-// Récupérer la liste des villes
-$villes = (new PatientModel())->getAllVilles();
-
-// Fonction pour afficher les erreurs
-function hasError($field) {
-    global $errors;
-    return isset($errors[$field]) ? 'is-invalid' : '';
-}
-
-function getError($field) {
-    global $errors;
-    return isset($errors[$field]) ? '<div class="invalid-feedback">' . $errors[$field] . '</div>' : '';
-}
-
-function getValue($field, $default = '') {
-    global $old;
-    return isset($old[$field]) ? htmlspecialchars($old[$field]) : $default;
-}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -423,6 +522,9 @@ function getValue($field, $default = '') {
                 padding: 12px;
             }
         }
+        #security_answer {
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -569,6 +671,7 @@ function getValue($field, $default = '') {
                                 <input type="password" id="confirm_password" name="confirm_password" required>
                             </div>
 
+
                             <div class="form-group">
                                 <label for="security_question">Question de sécurité</label>
                                 <select id="security_question" name="security_question">
@@ -584,6 +687,7 @@ function getValue($field, $default = '') {
                                 <label for="security_answer">Réponse</label>
                                 <input type="text" id="security_answer" name="security_answer">
                             </div>
+
                         </div>
                     </div>
 
@@ -641,6 +745,11 @@ function getValue($field, $default = '') {
             </a>
         </div>
     </footer>
-
+<script>
+    document.getElementById('security_question').addEventListener('change', function() {
+    const answerField = document.getElementById('security_answer');
+    answerField.style.display = this.value ? 'block' : 'none';
+});
+</script>
 </body>
 </html>
