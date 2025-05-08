@@ -79,7 +79,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     }
 
                     // Redirection vers le tableau de bord
-                    header("Location: dashboard_medecin.php");
+                    header("Location: docDashboard.php");
                     exit();
                 }
             } else {

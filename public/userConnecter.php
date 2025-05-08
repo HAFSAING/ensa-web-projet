@@ -11,6 +11,12 @@ $pdo = getDatabaseConnection();
 // Initialisation des variables
 $error_message = "";
 
+// Récupérer l'erreur de la session si elle existe
+if (isset($_SESSION['login_error'])) {
+    $error_message = $_SESSION['login_error'];
+    unset($_SESSION['login_error']); // Effacer le message d'erreur après l'avoir récupéré
+}
+
 // Traitement du formulaire si soumis
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Récupérer les données du formulaire
@@ -69,8 +75,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         setcookie('remember_patient', $token, time() + (86400 * 30), "/", "", true, true);
                     }
 
-                    // Redirection vers le tableau de bord
-                    header("Location: dashboard_patient.php");
+                    // Redirection vers le tableau de bord et sortie du script
+                    header("Location: userDashboard.php");
                     exit();
                 }
             } else {
@@ -82,11 +88,39 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     }
 
-    // Si une erreur est survenue, on stocke le message dans la session
+    // Si une erreur est survenue, on stocke le message dans la session et on redirige
     if (!empty($error_message)) {
         $_SESSION['login_error'] = $error_message;
         header("Location: userConnecter.php");
         exit();
+    }
+}
+
+// Vérification si un cookie de rappel existe
+if (!isset($_SESSION['patient_id']) && isset($_COOKIE['remember_patient'])) {
+    try {
+        $stmt = $pdo->prepare("SELECT id, nom, prenom, email, statut FROM patients WHERE remember_token = ?");
+        $stmt->execute([$_COOKIE['remember_patient']]);
+        $patient = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($patient && $patient['statut'] === 'actif') {
+            // Mise à jour de la date de dernière connexion
+            $update_stmt = $pdo->prepare("UPDATE patients SET last_login_at = NOW() WHERE id = ?");
+            $update_stmt->execute([$patient['id']]);
+            
+            // Stockage des informations de session
+            $_SESSION['patient_id'] = $patient['id'];
+            $_SESSION['patient_nom'] = $patient['nom'];
+            $_SESSION['patient_prenom'] = $patient['prenom'];
+            $_SESSION['patient_email'] = $patient['email'];
+            $_SESSION['user_type'] = 'patient';
+            
+            // Redirection vers le tableau de bord
+            header("Location: userdashboard.php");
+            exit();
+        }
+    } catch (PDOException $e) {
+        error_log("Erreur de connexion automatique: " . $e->getMessage());
     }
 }
 ?>
@@ -313,6 +347,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .patient-portal-link:hover {
             border-bottom: 1px solid #154050;
         }
+        
+        .error-message {
+            background-color: #ffe6e6;
+            color: #cc0000;
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            border-left: 4px solid #cc0000;
+        }
+        
         .footer {
             background-color: #5e8c99;
             color: white;
@@ -476,11 +520,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 <h1>Bienvenue sur MediStatView</h1>
                 <p class="welcome-text">Connectez-vous à votre compte pour accéder à votre tableau de bord d'analyse médicale</p>
+                
                 <?php if (!empty($error_message)): ?>
                     <div class="error-message">
                         <?= htmlspecialchars($error_message) ?>
                     </div>
                 <?php endif; ?>
+                
                 <form id="loginForm" action="userConnecter.php" method="post">
                     <div class="form-group">
                         <label for="username">Nom d'utilisateur</label>
