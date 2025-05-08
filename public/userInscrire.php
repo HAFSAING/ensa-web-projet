@@ -1,3 +1,95 @@
+<?php
+session_start();
+require_once __DIR__ . '/../config/database.php';
+$pdo = getDatabaseConnection();
+
+$errors = [];
+$form_data = [];
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Récupération des données du formulaire
+    $nom = htmlspecialchars(trim($_POST['nom'] ?? ''));
+    $prenom = htmlspecialchars(trim($_POST['prenom'] ?? ''));
+    $cin = htmlspecialchars(trim($_POST['cin'] ?? ''));
+    $date_naissance = $_POST['date_naissance'] ?? '';
+    $sexe = $_POST['sexe'] ?? '';
+    $email = filter_var(trim($_POST['email'] ?? ''), FILTER_SANITIZE_EMAIL);
+    $telephone = htmlspecialchars(trim($_POST['telephone'] ?? ''));
+    $adresse = htmlspecialchars(trim($_POST['adresse'] ?? ''));
+    $ville_id = intval($_POST['ville_id'] ?? 0);
+    $mutuelle = $_POST['mutuelle'] ?? 'aucune';
+    $password = $_POST['password'] ?? '';
+    $confirm_password = $_POST['confirm_password'] ?? '';
+    $notifications = isset($_POST['notifications']) ? 1 : 0;
+
+    // Validation des champs requis
+    if (empty($nom)) $errors[] = "Le nom est requis.";
+    if (empty($prenom)) $errors[] = "Le prénom est requis.";
+    if (empty($cin)) $errors[] = "Le CIN est requis.";
+    if (empty($date_naissance)) $errors[] = "La date de naissance est requise.";
+    if (empty($sexe)) $errors[] = "Le sexe est requis.";
+    if (empty($email)) $errors[] = "L'email est requis.";
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Email invalide.";
+    if (empty($telephone)) $errors[] = "Le téléphone est requis.";
+    if (empty($password)) $errors[] = "Le mot de passe est requis.";
+    if ($password !== $confirm_password) $errors[] = "Les mots de passe ne correspondent pas.";
+
+    // Vérifier si l'email existe déjà
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM patients WHERE email = ?");
+    $stmt->execute([$email]);
+    if ($stmt->fetchColumn() > 0) {
+        $errors[] = "Cet email est déjà utilisé.";
+    }
+
+    // Vérifier si le CIN existe déjà
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM patients WHERE cin = ?");
+    $stmt->execute([$cin]);
+    if ($stmt->fetchColumn() > 0) {
+        $errors[] = "Ce CIN est déjà utilisé.";
+    }
+
+    // Si aucune erreur, insérer dans la base
+    if (empty($errors)) {
+        try {
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+
+            $stmt = $pdo->prepare("
+                INSERT INTO patients (
+                    nom, prenom, cin, date_naissance, sexe, email, telephone, adresse,
+                    ville_id, mutuelle, password, notifications, statut, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'en_attente', NOW())
+            ");
+
+            $stmt->execute([
+                $nom, $prenom, $cin, $date_naissance, $sexe, $email, $telephone,
+                $adresse, $ville_id, $mutuelle, $hashed_password, $notifications
+            ]);
+
+            // Créer une notification pour l'administrateur
+            $notification_message = "Nouvelle demande d'inscription patient: " . $nom . " " . $prenom;
+            $notif_stmt = $pdo->prepare("
+                INSERT INTO notifications (utilisateur_id, type_utilisateur, titre, message, lien)
+                VALUES (1, 'patient', 'Nouvelle inscription patient', ?, '/admin/patients/verification')
+            ");
+            $notif_stmt->execute([$notification_message]);
+
+            // Stocker un message de succès dans la session
+            $_SESSION['success_message'] = "Demande d'inscription envoyée ! Un administrateur validera votre compte bientôt.";
+            header("Location: userConfirmation.php");
+            exit();
+        } catch (PDOException $e) {
+            error_log("Erreur d'inscription patient: " . $e->getMessage());
+            $errors[] = "Erreur lors de l'inscription : " . $e->getMessage();
+        }
+    } else {
+        // Sauvegarder les données du formulaire en cas d'erreur
+        $_SESSION['errors'] = $errors;
+        $_SESSION['form_data'] = $_POST;
+        header("Location: userInscrire.php");
+        exit();
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -418,8 +510,18 @@
 
                 <h1>Inscription Patient</h1>
                 <p class="welcome-text">Créez votre compte patient pour accéder à vos données médicales et suivre vos consultations</p>
-
-                <form id="registerForm" action="register-patient.php" method="post">
+                
+                <?php if (!empty($errors)): ?>
+                    <div class="error-message">
+                        <ul>
+                            <?php foreach ($errors as $error): ?>
+                                <li><?= htmlspecialchars($error) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php endif; ?>
+                
+                <form id="registerForm" action="userInscrire.php" method="post" enctype="multipart/form-data">
                     <div class="form-container">
                         <div class="form-column">
                             <div class="form-group">
@@ -467,18 +569,14 @@
                             <div class="form-group">
                                 <label for="ville">Ville</label>
                                 <select id="ville" name="ville">
-                                    <option value="">Sélectionnez</option>
-                                    <option value="casablanca">Casablanca</option>
-                                    <option value="rabat">Rabat</option>
-                                    <option value="marrakech">Marrakech</option>
-                                    <option value="fes">Fès</option>
-                                    <option value="tanger">Tanger</option>
-                                    <option value="agadir">Agadir</option>
-                                    <option value="meknes">Meknès</option>
-                                    <option value="oujda">Oujda</option>
-                                    <option value="kenitra">Kénitra</option>
-                                    <option value="tetouan">Tétouan</option>
-                                    <option value="autre">Autre</option>
+                                    <option value="">Sélectionnez une ville</option>
+                                    <?php
+                                        // Charger les villes depuis la base de données
+                                        $stmt = $pdo->query("SELECT id, nom FROM villes ORDER BY nom ASC");
+                                        while ($ville = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                                            echo "<option value='{$ville['id']}'>{$ville['nom']}</option>";
+                                        }
+                                    ?>
                                 </select>
                             </div>
 

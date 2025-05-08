@@ -28,6 +28,9 @@
             background-color: var(--light-bg);
             line-height: 1.6;
             color: var(--text-dark);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
         
         /* Header avec navigation et icônes */
@@ -42,9 +45,10 @@
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 0 1rem;
+            width: 100%;
         }
         
         .header-content {
@@ -65,7 +69,7 @@
         .nav-list {
             display: flex;
             list-style: none;
-            gap: 0.5rem;
+            gap: 1rem;
             margin: 0;
             padding: 0;
             flex-wrap: wrap;
@@ -146,13 +150,18 @@
             opacity: 0.9;
         }
         
+        /* Main Content */
+        main {
+            flex: 1;
+        }
+        
         /* Rendez-vous Container */
         .rdv-container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 2rem auto;
             padding: 0 1rem;
             display: grid;
-            grid-template-columns: 300px 1fr;
+            grid-template-columns: 280px 1fr;
             gap: 2rem;
         }
         
@@ -163,6 +172,8 @@
             box-shadow: var(--shadow);
             padding: 1.5rem;
             height: fit-content;
+            position: sticky;
+            top: 90px;
         }
         
         .sidebar h3 {
@@ -269,6 +280,22 @@
             display: flex;
             border-bottom: 1px solid #ddd;
             margin-bottom: 1.5rem;
+            overflow-x: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent-color2) #f1f1f1;
+        }
+        
+        .tabs::-webkit-scrollbar {
+            height: 5px;
+        }
+        
+        .tabs::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        .tabs::-webkit-scrollbar-thumb {
+            background: var(--accent-color2);
+            border-radius: 6px;
         }
         
         .tab {
@@ -278,6 +305,7 @@
             color: #777;
             border-bottom: 3px solid transparent;
             transition: all 0.3s ease;
+            white-space: nowrap;
         }
         
         .tab:hover {
@@ -499,6 +527,7 @@
             overflow: hidden;
             border: 1px solid #eee;
             transition: all 0.3s ease;
+            height: 100%;
         }
         
         .rdv-card:hover {
@@ -536,6 +565,9 @@
         
         .rdv-card-body {
             padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            height: calc(100% - 60px);
         }
         
         .rdv-title {
@@ -547,6 +579,7 @@
         .rdv-info {
             list-style: none;
             margin-bottom: 1rem;
+            flex-grow: 1;
         }
         
         .rdv-info li {
@@ -567,6 +600,7 @@
             padding-top: 1rem;
             display: flex;
             justify-content: space-between;
+            margin-top: auto;
         }
         
         .rdv-action-btn {
@@ -577,6 +611,7 @@
             align-items: center;
             gap: 0.3rem;
             transition: all 0.3s ease;
+            cursor: pointer;
         }
         
         .rdv-action-btn.edit {
@@ -629,7 +664,7 @@
         
         .form-row {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 1rem;
         }
         
@@ -640,112 +675,11 @@
             margin-top: 1rem;
         }
         
-        /* Responsive Design */
-        @media (max-width: 992px) {
-            .rdv-container {
-                grid-template-columns: 1fr;
-            }
-            
-            .sidebar {
-                display: none;
-            }
-            
-            .mobile-menu-toggle {
-                display: block;
-                background: none;
-                border: none;
-                font-size: 1.5rem;
-                color: var(--primary-color);
-                cursor: pointer;
-            }
-            
-            .sidebar.active {
-                display: block;
-                position: fixed;
-                top: 0;
-                left: 0;
-                height: 100vh;
-                width: 280px;
-                z-index: 1000;
-                animation: slideIn 0.3s forwards;
-            }
-            
-            @keyframes slideIn {
-                from {
-                    transform: translateX(-100%);
-                }
-                to {
-                    transform: translateX(0);
-                }
-            }
-            
-            .sidebar-overlay {
-                display: none;
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background-color: rgba(0,0,0,0.5);
-                z-index: 999;
-            }
-            
-            .sidebar-overlay.active {
-                display: block;
-            }
-            
-            .sidebar-close {
-                position: absolute;
-                top: 1rem;
-                right: 1rem;
-                background: none;
-                border: none;
-                font-size: 1.5rem;
-                color: var(--primary-color);
-                cursor: pointer;
-                display: block;
-            }
-        }
-        
-        @media (max-width: 768px) {
-            .rdv-cards {
-                grid-template-columns: 1fr;
-            }
-            
-            .content-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 1rem;
-            }
-            
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-            
-            .tabs {
-                overflow-x: auto;
-                white-space: nowrap;
-                padding-bottom: 0.5rem;
-            }
-        }
-        
-        @media (max-width: 576px) {
-            .page-title h1 {
-                font-size: 1.8rem;
-            }
-            
-            .calendar-grid {
-                gap: 2px;
-            }
-            
-            .rdv-filters {
-                flex-direction: column;
-            }
-            
-            .rdv-filter-dropdown-content {
-                left: 0;
-                right: auto;
-            }
+        /* Simplified Form */
+        .simplified-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
         }
         
         /* Footer avec Google Maps et informations de contact */
@@ -753,10 +687,11 @@
             background-color: var(--primary-color);
             color: var(--text-light);
             padding: 4rem 2rem 2rem;
+            margin-top: 2rem;
         }
         
         .footer-content {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -854,6 +789,10 @@
         
         .legal-links {
             margin-top: 1rem;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
         
         .legal-links a {
@@ -867,8 +806,104 @@
             color: var(--accent-color1);
         }
         
-        /* Responsive design pour le footer */
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .rdv-cards {
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            }
+        }
+        
+        @media (max-width: 992px) {
+            .rdv-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                display: none;
+                position: sticky;
+                top: 80px;
+            }
+            
+            .mobile-menu-toggle {
+                display: block !important;
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                color: var(--primary-color);
+                cursor: pointer;
+                margin-bottom: 1rem;
+            }
+            
+            .sidebar.active {
+                display: block;
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100vh;
+                width: 280px;
+                z-index: 1000;
+                animation: slideIn 0.3s forwards;
+            }
+            
+            @keyframes slideIn {
+                from {
+                    transform: translateX(-100%);
+                }
+                to {
+                    transform: translateX(0);
+                }
+            }
+            
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0,0,0,0.5);
+                z-index: 999;
+            }
+            
+            .sidebar-overlay.active {
+                display: block;
+            }
+            
+            .sidebar-close {
+                position: absolute;
+                top: 1rem;
+                right: 1rem;
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                color: var(--primary-color);
+                cursor: pointer;
+                display: block;
+            }
+        }
+        
         @media (max-width: 768px) {
+            .rdv-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .content-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            
+            .tabs {
+                overflow-x: auto;
+                white-space: nowrap;
+                padding-bottom: 0.5rem;
+                gap: 0;
+            }
+            
+            .simplified-form {
+                grid-template-columns: 1fr;
+            }
+            
             .footer-content {
                 grid-template-columns: 1fr 1fr;
             }
@@ -879,18 +914,29 @@
         }
         
         @media (max-width: 576px) {
+            .page-title h1 {
+                font-size: 1.8rem;
+            }
+            
+            .calendar-grid {
+                gap: 2px;
+            }
+            
+            .rdv-filters {
+                flex-direction: column;
+            }
+            
+            .rdv-filter-dropdown-content {
+                left: 0;
+                right: auto;
+            }
+            
             .footer-content {
                 grid-template-columns: 1fr;
             }
             
             .footer-column.footer-map {
                 grid-column: span 1;
-            }
-            
-            .legal-links {
-                display: flex;
-                flex-direction: column;
-                gap: 0.5rem;
             }
         }
     </style>
@@ -953,619 +999,503 @@
         </div>
     </section>
 
-    <!-- Main Content with Sidebar and Calendar -->
-    <div class="rdv-container">
-        <!-- Mobile Menu Toggle -->
-        <button class="mobile-menu-toggle" id="openSidebar" style="display: none;">
-            <i class="fas fa-bars"></i>
-        </button>
-        
-        <!-- Sidebar -->
-        <div class="sidebar" id="sidebar">
-            <button class="sidebar-close" id="closeSidebar" style="display: none;">
-                <i class="fas fa-times"></i>
+    <main>
+        <!-- Main Content with Sidebar and Calendar -->
+        <div class="container rdv-container">
+            <!-- Mobile Menu Toggle -->
+            <button class="mobile-menu-toggle" id="openSidebar" style="display: none;">
+                <i class="fas fa-bars"></i> Menu
             </button>
-            <h3>Menu</h3>
-            <ul class="sidebar-menu">
-                <li>
-                    <a href="#" class="sidebar-link active">
-                        <span class="sidebar-icon"><i class="fas fa-calendar-alt"></i></span>
-                        Mes Rendez-vous
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="sidebar-link">
-                        <span class="sidebar-icon"><i class="fas fa-user-md"></i></span>
-                        Mes Médecins
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="sidebar-link">
-                        <span class="sidebar-icon"><i class="fas fa-file-medical"></i></span>
-                        Mes Documents
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="sidebar-link">
-                        <span class="sidebar-icon"><i class="fas fa-history"></i></span>
-                        Historique
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="sidebar-link">
-                        <span class="sidebar-icon"><i class="fas fa-bell"></i></span>
-                        Notifications
-                        <span style="margin-left: auto; background-color: var(--accent-color3); color: white; font-size: 0.8rem; padding: 0.2rem 0.5rem; border-radius: 10px;">3</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="sidebar-link">
-                        <span class="sidebar-icon"><i class="fas fa-cog"></i></span>
-                        Paramètres
-                    </a>
-                </li>
-            </ul>
             
-            <h3 style="margin-top: 2rem;">Statistiques</h3>
-            <div style="background-color: rgba(134, 179, 195, 0.1); border-radius: 8px; padding: 1rem; margin-top: 1rem;">
-                <p><strong>Ce mois-ci :</strong></p>
-                <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
-                    <span>Rendez-vous</span>
-                    <span>8</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
-                    <span>Confirmés</span>
-                    <span>5</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
-                    <span>En attente</span>
-                    <span>2</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
-                    <span>Annulés</span>
-                    <span>1</span>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Sidebar Overlay -->
-        <div class="sidebar-overlay" id="sidebarOverlay"></div>
-        
-        <!-- Main Content -->
-        <div class="main-content">
-            <div class="content-header">
-                <h2 class="content-title">Mes Rendez-vous</h2>
-                <a href="#" class="btn btn-primary" id="newRdvBtn">
-                    <i class="fas fa-plus"></i>
-                    Nouveau rendez-vous
-                </a>
+            <!-- Sidebar -->
+            <div class="sidebar" id="sidebar">
+                <button class="sidebar-close" id="closeSidebar" style="display: none;">
+                    <i class="fas fa-times"></i>
+                </button>
+                <h3>Menu</h3>
+                <ul class="sidebar-menu">
+                    <li>
+                        <a href="#" class="sidebar-link active">
+                            <span class="sidebar-icon"><i class="fas fa-calendar-alt"></i></span>
+                            Mes Rendez-vous
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-link">
+                            <span class="sidebar-icon"><i class="fas fa-plus-circle"></i></span>
+                            Nouveau Rendez-vous
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-link">
+                            <span class="sidebar-icon"><i class="fas fa-history"></i></span>
+                            Historique
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-link">
+                            <span class="sidebar-icon"><i class="fas fa-bell"></i></span>
+                            Rappels
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-link">
+                            <span class="sidebar-icon"><i class="fas fa-cog"></i></span>
+                            Paramètres
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="sidebar-link">
+                            <span class="sidebar-icon"><i class="fas fa-question-circle"></i></span>
+                            Aide & Support
+                        </a>
+                    </li>
+                </ul>
             </div>
             
-            <!-- Tabs Navigation -->
-            <div class="tabs">
-                <div class="tab active" data-tab="calendar">Calendrier</div>
-                <div class="tab" data-tab="list">Liste</div>
-                <div class="tab" data-tab="create">Créer</div>
-            </div>
+            <!-- Sidebar Overlay -->
+            <div class="sidebar-overlay" id="sidebarOverlay"></div>
             
-            <!-- Calendar Tab Content -->
-            <div class="tab-content active" id="calendar-tab">
-                <div class="calendar">
-                    <div class="calendar-header">
-                        <div class="calendar-nav">
-                            <button class="calendar-btn" id="prevMonth">
-                                <i class="fas fa-chevron-left"></i>
-                            </button>
-                            <span class="calendar-month">Mai 2025</span>
-                            <button class="calendar-btn" id="nextMonth">
-                                <i class="fas fa-chevron-right"></i>
-                            </button>
-                        </div>
-                        <div>
-                            <button class="btn btn-outline">
-                                <i class="fas fa-sync-alt"></i>
-                                Aujourd'hui
-                            </button>
-                        </div>
-                    </div>
-                    <div class="calendar-weekdays calendar-grid">
-                        <div class="calendar-day">Lun</div>
-                        <div class="calendar-day">Mar</div>
-                        <div class="calendar-day">Mer</div>
-                        <div class="calendar-day">Jeu</div>
-                        <div class="calendar-day">Ven</div>
-                        <div class="calendar-day">Sam</div>
-                        <div class="calendar-day">Dim</div>
-                    </div>
-                    <div class="calendar-dates calendar-grid">
-                        <div class="calendar-date disabled">28</div>
-                        <div class="calendar-date disabled">29</div>
-                        <div class="calendar-date disabled">30</div>
-                        <div class="calendar-date">1</div>
-                        <div class="calendar-date">2</div>
-                        <div class="calendar-date has-event">3</div>
-                        <div class="calendar-date">4</div>
-                        <div class="calendar-date">5</div>
-                        <div class="calendar-date today active">6</div>
-                        <div class="calendar-date has-event">7</div>
-                        <div class="calendar-date">8</div>
-                        <div class="calendar-date">9</div>
-                        <div class="calendar-date">10</div>
-                        <div class="calendar-date">11</div>
-                        <div class="calendar-date">12</div>
-                        <div class="calendar-date">13</div>
-                        <div class="calendar-date has-event">14</div>
-                        <div class="calendar-date">15</div>
-                        <div class="calendar-date">16</div>
-                        <div class="calendar-date">17</div>
-                        <div class="calendar-date">18</div>
-                        <div class="calendar-date">19</div>
-                        <div class="calendar-date">20</div>
-                        <div class="calendar-date has-event">21</div>
-                        <div class="calendar-date">22</div>
-                        <div class="calendar-date">23</div>
-                        <div class="calendar-date">24</div>
-                        <div class="calendar-date">25</div>
-                        <div class="calendar-date">26</div>
-                        <div class="calendar-date">27</div>
-                        <div class="calendar-date">28</div>
-                        <div class="calendar-date">29</div>
-                        <div class="calendar-date">30</div>
-                        <div class="calendar-date">31</div>
-                        <div class="calendar-date disabled">1</div>
-                    </div>
+            <!-- Main Content -->
+            <div class="main-content">
+                <div class="content-header">
+                    <h2 class="content-title">Mes Rendez-vous</h2>
+                    <a href="#" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nouveau Rendez-vous
+                    </a>
                 </div>
                 
-                <h3>Rendez-vous du 6 mai 2025</h3>
-                <div class="rdv-cards">
-                    <div class="rdv-card">
-                        <div class="rdv-card-header confirme">
-                            <div class="rdv-status">Confirmé</div>
-                            <div>10:30 - 11:00</div>
+                <!-- Simple Tabs -->
+                <div class="tabs">
+                    <div class="tab active" data-tab="upcoming">À venir</div>
+                    <div class="tab" data-tab="past">Passés</div>
+                    <div class="tab" data-tab="canceled">Annulés</div>
+                    <div class="tab" data-tab="quick">Prise rapide</div>
+                </div>
+                
+                <!-- Tab Content - Upcoming -->
+                <div class="tab-content active" id="upcoming">
+                    <!-- Simple Search and Filter -->
+                    <div class="rdv-filters">
+                        <div class="rdv-search">
+                            <i class="fas fa-search"></i>
+                            <input type="text" placeholder="Rechercher un rendez-vous...">
                         </div>
-                        <div class="rdv-card-body">
-                            <h4 class="rdv-title">Consultation générale</h4>
-                            <ul class="rdv-info">
-                                <li>
-                                    <span class="rdv-info-icon"><i class="fas fa-user-md"></i></span>
-                                    Dr. Martin Dupont
-                                </li>
-                                <li>
-                                    <span class="rdv-info-icon"><i class="fas fa-stethoscope"></i></span>
-                                    Médecin généraliste
-                                </li>
-                                <li>
-                                    <span class="rdv-info-icon"><i class="fas fa-map-marker-alt"></i></span>
-                                    Cabinet médical St-Michel
-                                </li>
-                                <li>
-                                    <span class="rdv-info-icon"><i class="fas fa-file-medical-alt"></i></span>
-                                    Contrôle annuel
-                                </li>
-                            </ul>
-                            <div class="rdv-actions">
-                                <a href="#" class="rdv-action-btn edit">
-                                    <i class="fas fa-pen"></i>
-                                    Modifier
-                                </a>
-                                <a href="#" class="rdv-action-btn delete">
-                                    <i class="fas fa-times"></i>
-                                    Annuler
-                                </a>
+                        <div class="rdv-filter-dropdown">
+                            <button class="rdv-filter-btn">
+                                <i class="fas fa-filter"></i> Filtrer
+                            </button>
+                            <div class="rdv-filter-dropdown-content">
+                                <div class="filter-option">
+                                    <input type="checkbox" id="filter-all" checked>
+                                    <label for="filter-all">Tous</label>
+                                </div>
+                                <div class="filter-option">
+                                    <input type="checkbox" id="filter-confirmed">
+                                    <label for="filter-confirmed">Confirmés</label>
+                                </div>
+                                <div class="filter-option">
+                                    <input type="checkbox" id="filter-pending">
+                                    <label for="filter-pending">En attente</label>
+                                </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="rdv-card">
-                        <div class="rdv-card-header en-attente">
-                            <div class="rdv-status">En attente</div>
-                            <div>15:00 - 15:30</div>
-                        </div>
-                        <div class="rdv-card-body">
-                            <h4 class="rdv-title">Analyse de sang</h4>
-                            <ul class="rdv-info">
-                                <li>
-                                    <span class="rdv-info-icon"><i class="fas fa-vial"></i></span>
-                                    Laboratoire Central
-                                </li>
-                                <li>
-                                    <span class="rdv-info-icon"><i class="fas fa-map-marker-alt"></i></span>
-                                    15 rue des Lilas
-                                </li>
-                                <li>
-                                    <span class="rdv-info-icon"><i class="fas fa-file-medical-alt"></i></span>
-                                    Bilan sanguin complet
-                                </li>
-                            </ul>
-                            <div class="rdv-actions">
-                                <a href="#" class="rdv-action-btn edit">
-                                    <i class="fas fa-pen"></i>
-                                    Modifier
-                                </a>
-                                <a href="#" class="rdv-action-btn delete">
-                                    <i class="fas fa-times"></i>
-                                    Annuler
-                                </a>
+                    <!-- Simplified Calendar View -->
+                    <div class="calendar">
+                        <div class="calendar-header">
+                            <div class="calendar-nav">
+                                <button class="calendar-btn">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <span class="calendar-month">Mai 2025</span>
+                                <button class="calendar-btn">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
                             </div>
                         </div>
+                        <div class="calendar-grid">
+                            <div class="calendar-day">Lun</div>
+                            <div class="calendar-day">Mar</div>
+                            <div class="calendar-day">Mer</div>
+                            <div class="calendar-day">Jeu</div>
+                            <div class="calendar-day">Ven</div>
+                            <div class="calendar-day">Sam</div>
+                            <div class="calendar-day">Dim</div>
+                            
+                            <!-- Dates de la première semaine -->
+                            <div class="calendar-date disabled">29</div>
+                            <div class="calendar-date disabled">30</div>
+                            <div class="calendar-date">1</div>
+                            <div class="calendar-date">2</div>
+                            <div class="calendar-date">3</div>
+                            <div class="calendar-date">4</div>
+                            <div class="calendar-date">5</div>
+                            
+                            <!-- Dates de la deuxième semaine -->
+                            <div class="calendar-date today">6</div>
+                            <div class="calendar-date has-event">7</div>
+                            <div class="calendar-date">8</div>
+                            <div class="calendar-date">9</div>
+                            <div class="calendar-date has-event">10</div>
+                            <div class="calendar-date">11</div>
+                            <div class="calendar-date">12</div>
+                            
+                            <!-- Dates de la troisième semaine -->
+                            <div class="calendar-date">13</div>
+                            <div class="calendar-date">14</div>
+                            <div class="calendar-date active has-event">15</div>
+                            <div class="calendar-date">16</div>
+                            <div class="calendar-date">17</div>
+                            <div class="calendar-date">18</div>
+                            <div class="calendar-date">19</div>
+                            
+                            <!-- Dates de la quatrième semaine -->
+                            <div class="calendar-date">20</div>
+                            <div class="calendar-date has-event">21</div>
+                            <div class="calendar-date">22</div>
+                            <div class="calendar-date">23</div>
+                            <div class="calendar-date">24</div>
+                            <div class="calendar-date">25</div>
+                            <div class="calendar-date">26</div>
+                            
+                            <!-- Dates de la cinquième semaine -->
+                            <div class="calendar-date">27</div>
+                            <div class="calendar-date">28</div>
+                            <div class="calendar-date">29</div>
+                            <div class="calendar-date">30</div>
+                            <div class="calendar-date">31</div>
+                            <div class="calendar-date disabled">1</div>
+                            <div class="calendar-date disabled">2</div>
+                        </div>
                     </div>
-                </div>
-            </div>
-            
-            <!-- List Tab Content -->
-            <div class="tab-content" id="list-tab">
-                <div class="rdv-filters">
-                    <div class="rdv-search">
-                        <i class="fas fa-search"></i>
-                        <input type="text" placeholder="Rechercher un rendez-vous...">
-                    </div>
-                    <div class="rdv-filter-dropdown">
-                        <button class="rdv-filter-btn">
-                            <i class="fas fa-filter"></i>
-                            Filtrer
-                        </button>
-                        <div class="rdv-filter-dropdown-content">
-                            <div class="filter-option">
-                                <input type="checkbox" id="filter-all" checked>
-                                <label for="filter-all">Tous</label>
+                    
+                    <!-- Liste de rendez-vous simplifiée -->
+                    <div class="rdv-list">
+                        <h3>Rendez-vous du 15 Mai 2025</h3>
+                        <div class="rdv-cards">
+                            <!-- Carte de rendez-vous 1 -->
+                            <div class="rdv-card">
+                                <div class="rdv-card-header confirme">
+                                    <span class="rdv-status">Confirmé</span>
+                                    <h3>9:00 - 9:45</h3>
+                                </div>
+                                <div class="rdv-card-body">
+                                    <h4 class="rdv-title">Dr. Martin Dubois</h4>
+                                    <ul class="rdv-info">
+                                        <li>
+                                            <span class="rdv-info-icon"><i class="fas fa-stethoscope"></i></span>
+                                            <span>Cardiologie</span>
+                                        </li>
+                                        <li>
+                                            <span class="rdv-info-icon"><i class="fas fa-map-marker-alt"></i></span>
+                                            <span>Centre Médical Saint-Michel</span>
+                                        </li>
+                                        <li>
+                                            <span class="rdv-info-icon"><i class="fas fa-info-circle"></i></span>
+                                            <span>Contrôle annuel</span>
+                                        </li>
+                                    </ul>
+                                    <div class="rdv-actions">
+                                        <button class="rdv-action-btn edit">
+                                            <i class="fas fa-edit"></i> Modifier
+                                        </button>
+                                        <button class="rdv-action-btn delete">
+                                            <i class="fas fa-times"></i> Annuler
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="filter-option">
-                                <input type="checkbox" id="filter-confirmed">
-                                <label for="filter-confirmed">Confirmés</label>
-                            </div>
-                            <div class="filter-option">
-                                <input type="checkbox" id="filter-pending">
-                                <label for="filter-pending">En attente</label>
-                            </div>
-                            <div class="filter-option">
-                                <input type="checkbox" id="filter-canceled">
-                                <label for="filter-canceled">Annulés</label>
+                            
+                            <!-- Carte de rendez-vous 2 -->
+                            <div class="rdv-card">
+                                <div class="rdv-card-header en-attente">
+                                    <span class="rdv-status">En attente</span>
+                                    <h3>14:30 - 15:15</h3>
+                                </div>
+                                <div class="rdv-card-body">
+                                    <h4 class="rdv-title">Dr. Sophie Laurent</h4>
+                                    <ul class="rdv-info">
+                                        <li>
+                                            <span class="rdv-info-icon"><i class="fas fa-stethoscope"></i></span>
+                                            <span>Dermatologie</span>
+                                        </li>
+                                        <li>
+                                            <span class="rdv-info-icon"><i class="fas fa-map-marker-alt"></i></span>
+                                            <span>Clinique de la Peau</span>
+                                        </li>
+                                        <li>
+                                            <span class="rdv-info-icon"><i class="fas fa-info-circle"></i></span>
+                                            <span>Examen des grains de beauté</span>
+                                        </li>
+                                    </ul>
+                                    <div class="rdv-actions">
+                                        <button class="rdv-action-btn edit">
+                                            <i class="fas fa-edit"></i> Modifier
+                                        </button>
+                                        <button class="rdv-action-btn delete">
+                                            <i class="fas fa-times"></i> Annuler
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="rdv-cards">
-                    <div class="rdv-card">
-                        <div class="rdv-card-header confirme">
-                            <div class="rdv-status">Confirmé</div>
-                            <div>6 mai 2025 - 10:30</div>
-                        </div>
-                        <div class="rdv-card-body">
-                            <h4 class="rdv-title">Consultation générale</h4>
-                            <ul class="rdv-info">
-                                <li>
-                                    <span class="rdv-info-icon"><i class="fas fa-user-md"></i></span>
-                                    Dr. Martin Dupont
-                                </li>
-                                <li>
-                                    <span class="rdv-info-icon"><i class="fas fa-stethoscope"></i></span>
-                                    Médecin généraliste
-                                </li>
-                                <li>
-                                    <span class="rdv-info-icon"><i class="fas fa-map-marker-alt"></i></span>
-                                    Cabinet médical St-Michel
-                                </li>
-                            </ul>
-                            <div class="rdv-actions">
-                                <a href="#" class="rdv-action-btn edit">
-                                    <i class="fas fa-pen"></i>
-                                    Modifier
-                                </a>
-                                <a href="#" class="rdv-action-btn delete">
-                                    <i class="fas fa-times"></i>
-                                    Annuler
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="rdv-card">
-                        <div class="rdv-card-header en-attente">
-                            <div class="rdv-status">En attente</div>
-                            <div>6 mai 2025 - 15:00</div>
-                        </div>
-                        <div class="rdv-card-body">
-                            <h4 class="rdv-title">Analyse de sang</h4>
-                            <ul class="rdv-info">
-                                <li>
-                                    <span class="rdv-info-icon"><i class="fas fa-vial"></i></span>
-                                    Laboratoire Central
-                                </li>
-                                <li>
-                                    <span class="rdv-info-icon"><i class="fas fa-map-marker-alt"></i></span>
-                                    15 rue des Lilas
-                                </li>
-                            </ul>
-                            <div class="rdv-actions">
-                                <a href="#" class="rdv-action-btn edit">
-                                    <i class="fas fa-pen"></i>
-                                    Modifier
-                                </a>
-                                <a href="#" class="rdv-action-btn delete">
-                                    <i class="fas fa-times"></i>
-                                    Annuler
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="rdv-card">
-                        <div class="rdv-card-header confirme">
-                            <div class="rdv-status">Confirmé</div>
-                            <div>7 mai 2025 - 14:15</div>
-                        </div>
-                        <div class="rdv-card-body">
-                            <h4 class="rdv-title">Suivi dentaire</h4>
-                            <ul class="rdv-info">
-                                <li>
-                                    <span class="rdv-info-icon"><i class="fas fa-tooth"></i></span>
-                                    Dr. Sophie Laurent
-                                </li>
-                                <li>
-                                    <span class="rdv-info-icon"><i class="fas fa-map-marker-alt"></i></span>
-                                    Centre dentaire Montparnasse
-                                </li>
-                            </ul>
-                            <div class="rdv-actions">
-                                <a href="#" class="rdv-action-btn edit">
-                                    <i class="fas fa-pen"></i>
-                                    Modifier
-                                </a>
-                                <a href="#" class="rdv-action-btn delete">
-                                    <i class="fas fa-times"></i>
-                                    Annuler
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="rdv-card">
-                        <div class="rdv-card-header confirme">
-                            <div class="rdv-status">Confirmé</div>
-                            <div>14 mai 2025 - 09:00</div>
-                        </div>
-                        <div class="rdv-card-body">
-                            <h4 class="rdv-title">Consultation spécialiste</h4>
-                            <ul class="rdv-info">
-                                <li>
-                                    <span class="rdv-info-icon"><i class="fas fa-user-md"></i></span>
-                                    Dr. Philippe Moreau
-                                </li>
-                                <li>
-                                    <span class="rdv-info-icon"><i class="fas fa-stethoscope"></i></span>
-                                    Cardiologue
-                                </li>
-                                <li>
-                                    <span class="rdv-info-icon"><i class="fas fa-map-marker-alt"></i></span>
-                                    Hôpital Saint-Louis
-                                </li>
-                            </ul>
-                            <div class="rdv-actions">
-                                <a href="#" class="rdv-action-btn edit">
-                                    <i class="fas fa-pen"></i>
-                                    Modifier
-                                </a>
-                                <a href="#" class="rdv-action-btn delete">
-                                    <i class="fas fa-times"></i>
-                                    Annuler
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="rdv-card">
-                        <div class="rdv-card-header annule">
-                            <div class="rdv-status">Annulé</div>
-                            <div>21 mai 2025 - 11:30</div>
-                        </div>
-                        <div class="rdv-card-body">
-                            <h4 class="rdv-title">Contrôle ophtalmologie</h4>
-                            <ul class="rdv-info">
-                                <li>
-                                    <span class="rdv-info-icon"><i class="fas fa-eye"></i></span>
-                                    Dr. Élise Petit
-                                </li>
-                                <li>
-                                    <span class="rdv-info-icon"><i class="fas fa-map-marker-alt"></i></span>
-                                    Cabinet Vision Plus
-                                </li>
-                            </ul>
-                            <div class="rdv-actions">
-                                <a href="#" class="rdv-action-btn edit">
-                                    <i class="fas fa-redo"></i>
-                                    Reprogrammer
-                                </a>
-                            </div>
-                        </div>
+                <!-- Tab Content - Past -->
+                <div class="tab-content" id="past">
+                    <div class="rdv-list">
+                        <p>Vos rendez-vous passés apparaîtront ici.</p>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Create Tab Content -->
-            <div class="tab-content" id="create-tab">
-                <div class="create-rdv-form">
-                    <h3>Nouveau rendez-vous</h3>
-                    <form action="#" method="post">
-                        <div class="form-group">
-                            <label for="rdv-type">Type de rendez-vous</label>
-                            <select class="form-control" id="rdv-type">
-                                <option value="consultation">Consultation</option>
-                                <option value="analyse">Analyse</option>
-                                <option value="suivi">Suivi</option>
-                                <option value="controle">Contrôle</option>
-                                <option value="autre">Autre</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="rdv-doctor">Médecin ou professionnel</label>
-                            <input type="text" class="form-control" id="rdv-doctor" placeholder="Nom du praticien">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="rdv-speciality">Spécialité</label>
-                            <input type="text" class="form-control" id="rdv-speciality" placeholder="Spécialité du praticien">
-                        </div>
-                        
-                        <div class="form-row">
+                
+                <!-- Tab Content - Canceled -->
+                <div class="tab-content" id="canceled">
+                    <div class="rdv-list">
+                        <p>Vos rendez-vous annulés apparaîtront ici.</p>
+                    </div>
+                </div>
+                
+                <!-- Tab Content - Quick Appointment -->
+                <div class="tab-content" id="quick">
+                    <h3>Prise de rendez-vous rapide</h3>
+                    <p>Remplissez ce formulaire pour prendre rapidement un rendez-vous.</p>
+                    
+                    <div class="create-rdv-form">
+                        <div class="simplified-form">
                             <div class="form-group">
-                                <label for="rdv-date">Date</label>
+                                <label for="speciality">Spécialité</label>
+                                <select class="form-control" id="speciality">
+                                    <option value="">Sélectionnez une spécialité</option>
+                                    <option value="cardio">Cardiologie</option>
+                                    <option value="derma">Dermatologie</option>
+                                    <option value="general">Médecine Générale</option>
+                                    <option value="ophtalmo">Ophtalmologie</option>
+                                    <option value="dental">Dentaire</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="doctor">Médecin</label>
+                                <select class="form-control" id="doctor">
+                                    <option value="">D'abord sélectionner une spécialité</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="rdv-date">Date souhaitée</label>
                                 <input type="date" class="form-control" id="rdv-date">
                             </div>
                             
                             <div class="form-group">
-                                <label for="rdv-time">Heure</label>
-                                <input type="time" class="form-control" id="rdv-time">
+                                <label for="rdv-time">Heure souhaitée</label>
+                                <select class="form-control" id="rdv-time">
+                                    <option value="">Sélectionnez une heure</option>
+                                    <option value="matin">Matin (8h-12h)</option>
+                                    <option value="midi">Midi (12h-14h)</option>
+                                    <option value="aprem">Après-midi (14h-18h)</option>
+                                    <option value="soir">Soir (18h-20h)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="rdv-reason">Motif</label>
+                                <textarea class="form-control" id="rdv-reason" rows="3" placeholder="Décrivez brièvement le motif de votre consultation..."></textarea>
                             </div>
                         </div>
                         
-                        <div class="form-group">
-                            <label for="rdv-location">Lieu</label>
-                            <input type="text" class="form-control" id="rdv-location" placeholder="Adresse du rendez-vous">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="rdv-notes">Notes</label>
-                            <textarea class="form-control" id="rdv-notes" rows="3" placeholder="Précisions importantes concernant ce rendez-vous"></textarea>
-                        </div>
-                        
                         <div class="form-actions">
-                            <button type="button" class="btn btn-outline">Annuler</button>
-                            <button type="submit" class="btn btn-primary">Créer le rendez-vous</button>
+                            <button class="btn btn-outline">Annuler</button>
+                            <button class="btn btn-primary">Rechercher disponibilités</button>
                         </div>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <!-- Footer -->
     <footer>
-        <div class="footer-content">
-            <div class="footer-column">
-                <h3>À propos de MediStatView</h3>
-                <p>MediStatView est une plateforme qui simplifie la gestion de vos rendez-vous médicaux et vous permet de suivre votre santé de manière efficace.</p>
-                <p>Notre mission est de rendre les soins médicaux plus accessibles et organisés pour tous.</p>
-                <div class="social-links">
-                    <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
-                    <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
-                    <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
-                    <a href="#" class="social-icon"><i class="fab fa-linkedin-in"></i></a>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-column">
+                    <h3>À propos</h3>
+                    <p>MediStatView est votre plateforme de gestion de santé complète. Nous vous aidons à gérer vos rendez-vous, trouver des professionnels de santé et accéder à des informations médicales fiables.</p>
+                    <div class="social-links">
+                        <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-linkedin-in"></i></a>
+                    </div>
+                </div>
+                
+                <div class="footer-column">
+                    <h3>Liens utiles</h3>
+                    <ul class="footer-links">
+                        <li><a href="#">Trouver un médecin</a></li>
+                        <li><a href="#">Prendre rendez-vous</a></li>
+                        <li><a href="#">Magazine santé</a></li>
+                        <li><a href="#">FAQ</a></li>
+                        <li><a href="#">Nous contacter</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-column footer-contact">
+                    <h3>Contact</h3>
+                    <p><span class="contact-icon"><i class="fas fa-map-marker-alt"></i></span> 123 Avenue de la Santé, 75001 Paris</p>
+                    <p><span class="contact-icon"><i class="fas fa-phone"></i></span> +33 1 23 45 67 89</p>
+                    <p><span class="contact-icon"><i class="fas fa-envelope"></i></span> contact@medistatview.fr</p>
+                    <p><span class="contact-icon"><i class="fas fa-clock"></i></span> Lun-Ven: 8h-20h | Sam: 9h-18h</p>
+                </div>
+                
+                <div class="footer-column footer-map">
+                    <h3>Nous trouver</h3>
+                    <div style="background-color: rgba(255,255,255,0.1); height: 200px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--accent-color1);">
+                        <i class="fas fa-map-marked-alt" style="font-size: 3rem;"></i>
+                    </div>
                 </div>
             </div>
             
-            <div class="footer-column">
-                <h3>Liens rapides</h3>
-                <ul class="footer-links">
-                    <li><a href="#">Accueil</a></li>
-                    <li><a href="#">Trouver un médecin</a></li>
-                    <li><a href="#">Pharmacies</a></li>
-                    <li><a href="#">Centre d'aide</a></li>
-                    <li><a href="#">Blog santé</a></li>
-                    <li><a href="#">FAQ</a></li>
-                </ul>
-            </div>
-            
-            <div class="footer-column footer-contact">
-                <h3>Contact</h3>
-                <p><span class="contact-icon"><i class="fas fa-map-marker-alt"></i></span> 123 Avenue des Soins, 75000 Paris</p>
-                <p><span class="contact-icon"><i class="fas fa-phone-alt"></i></span> +33 1 23 45 67 89</p>
-                <p><span class="contact-icon"><i class="fas fa-envelope"></i></span> contact@medistatview.fr</p>
-                <p><span class="contact-icon"><i class="fas fa-clock"></i></span> Lun-Ven: 9h-18h</p>
-            </div>
-            
-            <div class="footer-column footer-map">
-                <h3>Nous trouver</h3>
-                <div style="background-color: #ddd; width: 100%; height: 200px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
-                    <span style="color: #666;">Carte Google Maps</span>
+            <div class="copyright">
+                <p>&copy; 2025 MediStatView. Tous droits réservés.</p>
+                <div class="legal-links">
+                    <a href="#">Mentions légales</a>
+                    <a href="#">Politique de confidentialité</a>
+                    <a href="#">Conditions d'utilisation</a>
                 </div>
-            </div>
-        </div>
-        
-        <div class="copyright">
-            <p>© 2025 MediStatView - Tous droits réservés</p>
-            <div class="legal-links">
-                <a href="#">Conditions d'utilisation</a> | 
-                <a href="#">Politique de confidentialité</a> | 
-                <a href="#">Mentions légales</a>
             </div>
         </div>
     </footer>
 
-    <!-- Script pour les fonctionnalités interactives -->
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
     <script>
-        // Navigation par onglets
-        const tabs = document.querySelectorAll('.tab');
-        const tabContents = document.querySelectorAll('.tab-content');
-        
-        tabs.forEach(tab => {
+        // Simple Tab Functionality
+        document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', () => {
-                const target = tab.dataset.tab;
-                
-                // Désactiver tous les onglets
-                tabs.forEach(t => t.classList.remove('active'));
-                tabContents.forEach(content => content.classList.remove('active'));
-                
-                // Activer l'onglet cliqué
+                // Remove active class from all tabs
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                // Add active class to clicked tab
                 tab.classList.add('active');
-                document.getElementById(`${target}-tab`).classList.add('active');
+                
+                // Hide all tab contents
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                // Show the corresponding tab content
+                const tabId = tab.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
             });
         });
-        
-        // Menu mobile
-        const openSidebarBtn = document.getElementById('openSidebar');
-        const closeSidebarBtn = document.getElementById('closeSidebar');
+
+        // Mobile Menu Toggle
+        const openSidebar = document.getElementById('openSidebar');
+        const closeSidebar = document.getElementById('closeSidebar');
         const sidebar = document.getElementById('sidebar');
         const sidebarOverlay = document.getElementById('sidebarOverlay');
-        
-        // Vérifier si l'écran est de petite taille
-        const checkScreenSize = () => {
-            if (window.innerWidth <= 992) {
-                openSidebarBtn.style.display = 'block';
-                closeSidebarBtn.style.display = 'block';
-                sidebar.classList.remove('active');
-            } else {
-                openSidebarBtn.style.display = 'none';
-                closeSidebarBtn.style.display = 'none';
+
+        if (openSidebar && closeSidebar && sidebar && sidebarOverlay) {
+            openSidebar.addEventListener('click', () => {
+                sidebar.classList.add('active');
+                sidebarOverlay.classList.add('active');
+            });
+
+            closeSidebar.addEventListener('click', () => {
                 sidebar.classList.remove('active');
                 sidebarOverlay.classList.remove('active');
-            }
-        };
-        
-        // Vérifier la taille de l'écran au chargement et au redimensionnement
-        window.addEventListener('load', checkScreenSize);
-        window.addEventListener('resize', checkScreenSize);
-        
-        // Ouvrir le menu latéral
-        openSidebarBtn.addEventListener('click', () => {
-            sidebar.classList.add('active');
-            sidebarOverlay.classList.add('active');
-        });
-        
-        // Fermer le menu latéral
-        closeSidebarBtn.addEventListener('click', () => {
-            sidebar.classList.remove('active');
-            sidebarOverlay.classList.remove('active');
-        });
-        
-        sidebarOverlay.addEventListener('click', () => {
-            sidebar.classList.remove('active');
-            sidebarOverlay.classList.remove('active');
-        });
-        
-        // Dates du calendrier cliquables
-        const calendarDates = document.querySelectorAll('.calendar-date:not(.disabled)');
-        
-        calendarDates.forEach(date => {
-            date.addEventListener('click', () => {
-                calendarDates.forEach(d => d.classList.remove('active'));
-                date.classList.add('active');
             });
-        });
+
+            sidebarOverlay.addEventListener('click', () => {
+                sidebar.classList.remove('active');
+                sidebarOverlay.classList.remove('active');
+            });
+        }
+
+        // Dynamic Doctor Selection based on Specialty
+        const specialitySelect = document.getElementById('speciality');
+        const doctorSelect = document.getElementById('doctor');
+
+        if (specialitySelect && doctorSelect) {
+            specialitySelect.addEventListener('change', () => {
+                const specialty = specialitySelect.value;
+                doctorSelect.innerHTML = ''; // Clear previous options
+                
+                // Default option
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = 'Choisissez un médecin';
+                doctorSelect.appendChild(defaultOption);
+                
+                // Add doctors based on specialty
+                if (specialty === 'cardio') {
+                    const doctors = [
+                        { value: 'dubois', name: 'Dr. Martin Dubois' },
+                        { value: 'petit', name: 'Dr. Élise Petit' },
+                        { value: 'moreau', name: 'Dr. Philippe Moreau' }
+                    ];
+                    
+                    doctors.forEach(doctor => {
+                        const option = document.createElement('option');
+                        option.value = doctor.value;
+                        option.textContent = doctor.name;
+                        doctorSelect.appendChild(option);
+                    });
+                } else if (specialty === 'derma') {
+                    const doctors = [
+                        { value: 'laurent', name: 'Dr. Sophie Laurent' },
+                        { value: 'dupont', name: 'Dr. Alexandre Dupont' }
+                    ];
+                    
+                    doctors.forEach(doctor => {
+                        const option = document.createElement('option');
+                        option.value = doctor.value;
+                        option.textContent = doctor.name;
+                        doctorSelect.appendChild(option);
+                    });
+                } else if (specialty === 'general') {
+                    const doctors = [
+                        { value: 'bernard', name: 'Dr. Marie Bernard' },
+                        { value: 'martin', name: 'Dr. Jean Martin' },
+                        { value: 'lefebvre', name: 'Dr. Claire Lefebvre' }
+                    ];
+                    
+                    doctors.forEach(doctor => {
+                        const option = document.createElement('option');
+                        option.value = doctor.value;
+                        option.textContent = doctor.name;
+                        doctorSelect.appendChild(option);
+                    });
+                } else if (specialty === 'ophtalmo') {
+                    const doctors = [
+                        { value: 'richard', name: 'Dr. Thomas Richard' },
+                        { value: 'leroy', name: 'Dr. Amélie Leroy' }
+                    ];
+                    
+                    doctors.forEach(doctor => {
+                        const option = document.createElement('option');
+                        option.value = doctor.value;
+                        option.textContent = doctor.name;
+                        doctorSelect.appendChild(option);
+                    });
+                } else if (specialty === 'dental') {
+                    const doctors = [
+                        { value: 'durand', name: 'Dr. Nicolas Durand' },
+                        { value: 'mercier', name: 'Dr. Lucie Mercier' },
+                        { value: 'fontaine', name: 'Dr. Pascal Fontaine' }
+                    ];
+                    
+                    doctors.forEach(doctor => {
+                        const option = document.createElement('option');
+                        option.value = doctor.value;
+                        option.textContent = doctor.name;
+                        doctorSelect.appendChild(option);
+                    });
+                }
+            });
+        }
     </script>
-    
-    <!-- Font Awesome pour les icônes -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
 </body>
 </html>

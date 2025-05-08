@@ -1,3 +1,96 @@
+<?php
+// Démarrage de la session
+session_start();
+
+// Inclure la connexion à la base de données
+require_once __DIR__ . '/../config/database.php';
+
+// Obtenir la connexion PDO
+$pdo = getDatabaseConnection();
+
+// Initialisation des variables
+$error_message = "";
+
+// Traitement du formulaire si soumis
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Récupérer les données du formulaire
+    $username = htmlspecialchars(trim($_POST['username'] ?? ''));
+    $password = $_POST['password'] ?? '';
+    $remember = isset($_POST['remember']) ? true : false;
+
+    // Validation des champs requis
+    if (empty($username) || empty($password)) {
+        $error_message = "Tous les champs sont obligatoires.";
+    } else {
+        try {
+            // Vérifier si c'est un email ou un CIN
+            $is_email = filter_var($username, FILTER_VALIDATE_EMAIL);
+
+            if ($is_email) {
+                $stmt = $pdo->prepare("SELECT id, nom, prenom, email, password, statut FROM patients WHERE email = ?");
+            } else {
+                $stmt = $pdo->prepare("SELECT id, nom, prenom, email, password, statut FROM patients WHERE cin = ?");
+            }
+
+            $stmt->execute([$username]);
+            $patient = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // Vérifier si le patient existe et si le mot de passe est correct
+            if ($patient && password_verify($password, $patient['password'])) {
+                if ($patient['statut'] === 'en_attente') {
+                    $error_message = "Votre compte est en attente de validation. Veuillez patienter ou contacter le support.";
+                } elseif ($patient['statut'] === 'suspendu') {
+                    $error_message = "Votre compte a été suspendu. Veuillez contacter le support médical.";
+                } else {
+                    // Mise à jour de la date de dernière connexion
+                    $update_stmt = $pdo->prepare("UPDATE patients SET last_login_at = NOW() WHERE id = ?");
+                    $update_stmt->execute([$patient['id']]);
+
+                    // Enregistrement du log de connexion
+                    $log_stmt = $pdo->prepare("INSERT INTO logs_acces (utilisateur_id, type_utilisateur, action, ip_address, user_agent) VALUES (?, 'patient', 'connexion', ?, ?)");
+                    $log_stmt->execute([
+                        $patient['id'],
+                        $_SERVER['REMOTE_ADDR'],
+                        $_SERVER['HTTP_USER_AGENT']
+                    ]);
+
+                    // Stockage des informations de session
+                    $_SESSION['patient_id'] = $patient['id'];
+                    $_SESSION['patient_nom'] = $patient['nom'];
+                    $_SESSION['patient_prenom'] = $patient['prenom'];
+                    $_SESSION['patient_email'] = $patient['email'];
+                    $_SESSION['user_type'] = 'patient';
+
+                    // Si "Se souvenir de moi" est coché, création d'un cookie
+                    if ($remember) {
+                        $token = bin2hex(random_bytes(32));
+                        $token_stmt = $pdo->prepare("UPDATE patients SET remember_token = ? WHERE id = ?");
+                        $token_stmt->execute([$token, $patient['id']]);
+                        setcookie('remember_patient', $token, time() + (86400 * 30), "/", "", true, true);
+                    }
+
+                    // Redirection vers le tableau de bord
+                    header("Location: dashboard_patient.php");
+                    exit();
+                }
+            } else {
+                $error_message = "Identifiant ou mot de passe incorrect.";
+            }
+        } catch (PDOException $e) {
+            error_log("Erreur de connexion patient: " . $e->getMessage());
+            $error_message = "Une erreur s'est produite lors de la tentative de connexion.";
+        }
+    }
+
+    // Si une erreur est survenue, on stocke le message dans la session
+    if (!empty($error_message)) {
+        $_SESSION['login_error'] = $error_message;
+        header("Location: userConnecter.php");
+        exit();
+    }
+}
+?>
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -383,8 +476,12 @@
 
                 <h1>Bienvenue sur MediStatView</h1>
                 <p class="welcome-text">Connectez-vous à votre compte pour accéder à votre tableau de bord d'analyse médicale</p>
-
-                <form id="loginForm" action="login.php" method="post">
+                <?php if (!empty($error_message)): ?>
+                    <div class="error-message">
+                        <?= htmlspecialchars($error_message) ?>
+                    </div>
+                <?php endif; ?>
+                <form id="loginForm" action="userConnecter.php" method="post">
                     <div class="form-group">
                         <label for="username">Nom d'utilisateur</label>
                         <input type="text" id="username" name="username" required>

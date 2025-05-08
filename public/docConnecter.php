@@ -1,113 +1,106 @@
 <?php
-
 // Démarrage de la session
 session_start();
 
 // Inclusion du fichier de connexion à la base de données
 require_once __DIR__ . '/../config/database.php';
 
+// Obtenir la connexion via database.php
+$pdo = getDatabaseConnection();
+
 // Initialisation des variables de message d'erreur
 $error_message = "";
 
 // Vérification si le formulaire a été soumis
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    
-    // Récupération et nettoyage des données du formulaire
-    $username = escapeData($_POST['username']); // Identifiant professionnel (num_inpe ou email)
-    $password = $_POST['password']; // Le mot de passe ne doit pas être échappé avant la vérification
-    
+    // Récupération des données du formulaire
+    $username = htmlspecialchars($_POST['username']); // Sécurise les données sans utiliser une fonction non définie
+    $password = $_POST['password'];
+
     // Vérification des champs
     if (empty($username) || empty($password)) {
         $error_message = "Tous les champs sont obligatoires.";
     } else {
         // Vérification si l'identifiant est un email ou un numéro INPE
         $is_email = filter_var($username, FILTER_VALIDATE_EMAIL);
-        
+
         try {
             // Préparation de la requête SQL en fonction du type d'identifiant
             if ($is_email) {
-                $stmt = $pdo->prepare("SELECT id, nom, prenom, email, password, statut FROM medecins WHERE email = :username");
+                $stmt = $pdo->prepare("SELECT id, nom, prenom, email, password, statut FROM medecins WHERE email = ?");
             } else {
-                $stmt = $pdo->prepare("SELECT id, nom, prenom, email, password, statut FROM medecins WHERE num_inpe = :username");
+                $stmt = $pdo->prepare("SELECT id, nom, prenom, email, password, statut FROM medecins WHERE num_inpe = ?");
             }
-            
+
             // Exécution de la requête avec le paramètre bindé
-            $stmt->execute(['username' => $username]);
-            
-            // Récupération du résultat
+            $stmt->execute([$username]);
+
+            // Récupération du médecin
             $medecin = $stmt->fetch();
-            
+
             // Vérification si le médecin existe et si le mot de passe est correct
             if ($medecin && password_verify($password, $medecin['password'])) {
-                
                 // Vérification du statut du compte
                 if ($medecin['statut'] === 'en_attente') {
                     $error_message = "Votre compte est en attente de validation. Veuillez patienter ou contacter le support.";
-                } 
-                elseif ($medecin['statut'] === 'suspendu') {
+                } elseif ($medecin['statut'] === 'suspendu') {
                     $error_message = "Votre compte a été suspendu. Veuillez contacter le support médical.";
-                } 
-                else {
+                } else {
                     // Mise à jour de la date de dernière connexion
-                    $update_stmt = $pdo->prepare("UPDATE medecins SET last_login_at = NOW() WHERE id = :id");
-                    $update_stmt->execute(['id' => $medecin['id']]);
-                    
+                    $update_stmt = $pdo->prepare("UPDATE medecins SET last_login_at = NOW() WHERE id = ?");
+                    $update_stmt->execute([$medecin['id']]);
+
                     // Enregistrement du log de connexion
-                    $log_stmt = $pdo->prepare("INSERT INTO logs_acces (utilisateur_id, type_utilisateur, action, ip_address, user_agent) VALUES (:user_id, 'medecin', 'connexion', :ip, :user_agent)");
+                    $log_stmt = $pdo->prepare("INSERT INTO logs_acces (utilisateur_id, type_utilisateur, action, ip_address, user_agent) VALUES (?, 'medecin', 'connexion', ?, ?)");
                     $log_stmt->execute([
-                        'user_id' => $medecin['id'],
-                        'ip' => $_SERVER['REMOTE_ADDR'],
-                        'user_agent' => $_SERVER['HTTP_USER_AGENT']
+                        $medecin['id'],
+                        $_SERVER['REMOTE_ADDR'],
+                        $_SERVER['HTTP_USER_AGENT']
                     ]);
-                    
+
                     // Stockage des informations de session
                     $_SESSION['medecin_id'] = $medecin['id'];
                     $_SESSION['medecin_nom'] = $medecin['nom'];
                     $_SESSION['medecin_prenom'] = $medecin['prenom'];
                     $_SESSION['medecin_email'] = $medecin['email'];
                     $_SESSION['user_type'] = 'medecin';
-                    
+
                     // Si "Se souvenir de moi" est coché, création d'un cookie
                     if (isset($_POST['remember']) && $_POST['remember'] == 'on') {
                         // Génération d'un token aléatoire
                         $token = bin2hex(random_bytes(32));
-                        
+
                         // Stockage du token dans la base de données
-                        $token_stmt = $pdo->prepare("UPDATE medecins SET remember_token = :token WHERE id = :id");
-                        $token_stmt->execute([
-                            'token' => $token,
-                            'id' => $medecin['id']
-                        ]);
-                        
+                        $token_stmt = $pdo->prepare("UPDATE medecins SET remember_token = ? WHERE id = ?");
+                        $token_stmt->execute([$token, $medecin['id']]);
+
                         // Création du cookie (expire dans 30 jours)
                         setcookie('remember_medecin', $token, time() + (86400 * 30), "/", "", true, true);
                     }
-                    
+
                     // Redirection vers le tableau de bord
                     header("Location: dashboard_medecin.php");
                     exit();
                 }
-                
             } else {
                 $error_message = "Identifiant ou mot de passe incorrect.";
             }
-            
         } catch (PDOException $e) {
-            // En production, utilisez un système de log au lieu d'afficher l'erreur
-            $error_message = "Une erreur s'est produite lors de la tentative de connexion.";
-            // Log de l'erreur
+            // En production, utilisez un système de journalisation
             error_log("Erreur de connexion médecin: " . $e->getMessage());
+            $error_message = "Une erreur s'est produite lors de la tentative de connexion.";
         }
     }
-}
 
-// Si une erreur est survenue, on stocke le message dans la session pour l'afficher sur la page de connexion
-if (!empty($error_message)) {
-    $_SESSION['login_error'] = $error_message;
-    header("Location: index.php"); // Redirection vers la page de connexion
-    exit();
+    // Si une erreur est survenue, on stocke le message dans la session
+    if (!empty($error_message)) {
+        $_SESSION['login_error'] = $error_message;
+        header("Location: index.php"); // Redirection vers la page de connexion
+        exit();
+    }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -505,7 +498,7 @@ if (!empty($error_message)) {
                     <?php echo $error_message; ?>
                 </div>
                 <?php endif; ?>
-                <form id="loginForm" action="doctor-login.php" method="post">
+                <form id="loginForm" action="docConnecter.php" method="post">
                     <div class="form-group">
                         <label for="username">Identifiant professionnel</label>
                         <input type="text" id="username" name="username" required>

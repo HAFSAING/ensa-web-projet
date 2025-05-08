@@ -5,22 +5,8 @@ session_start();
 // Inclure le fichier de configuration de la base de données
 require_once __DIR__ . '/../config/database.php';
 
-// Définir une fonction pour connecter à la base de données si elle n'existe pas déjà
-if (!function_exists('connectDB')) {
-    function connectDB() {
-        try {
-            $pdo = new PDO("mysql:host=localhost;dbname=medistatview;charset=utf8mb4", "votre_utilisateur", "votre_mot_de_passe");
-            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            return $pdo;
-        } catch (PDOException $e) {
-            die("Erreur de connexion à la base de données: " . $e->getMessage());
-        }
-    }
-}
-
-// Traitement du formulaire
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $pdo = connectDB();
+    $pdo = getDatabaseConnection();
 
     $required_fields = [
         'civilite', 'specialite', 'nom', 'prenom', 'cin', 'date_naissance', 
