@@ -5,10 +5,19 @@ session_start();
 // Inclure le fichier de configuration de la base de données
 require_once __DIR__ . '/../config/database.php';
 
+// Initialisation des variables avec les données de session
 $old = $_SESSION['form_data'] ?? [];
 $errors = $_SESSION['inscription_errors'] ?? [];
+
+// Nettoyage des variables de session après utilisation
 unset($_SESSION['inscription_errors']);
 unset($_SESSION['form_data']);
+
+// Fonction pour récupérer les anciennes valeurs
+function getOldValue($field, $default = '') {
+    global $old;
+    return isset($old[$field]) ? htmlspecialchars($old[$field]) : $default;
+}
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $pdo = getDatabaseConnection();
@@ -28,38 +37,47 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     // Vérifier que les mots de passe correspondent
-    if ($_POST['password'] !== $_POST['confirm_password']) {
+    if (!empty($_POST['password']) && $_POST['password'] !== $_POST['confirm_password']) {
         $errors[] = "Les mots de passe ne correspondent pas.";
     }
 
     // Vérifier que le format de l'email est valide
-    if (!filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
+    if (!empty($_POST['email']) && !filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
         $errors[] = "Format d'adresse email invalide.";
     }
 
-    // Vérifier que l'email n'est pas déjà utilisé
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM patients WHERE email = ?");
-    $stmt->execute([$_POST['email']]);
-    if ($stmt->fetchColumn() > 0) {
-        $errors[] = "Cette adresse email est déjà utilisée.";
+    // Vérifications de base de données uniquement si les champs sont remplis
+    if (!empty($_POST['email'])) {
+        // Vérifier que l'email n'est pas déjà utilisé
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM patients WHERE email = ?");
+        $stmt->execute([$_POST['email']]);
+        if ($stmt->fetchColumn() > 0) {
+            $errors[] = "Cette adresse email est déjà utilisée.";
+        }
     }
 
-    // Vérifier que le CIN n'est pas déjà utilisé
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM patients WHERE cin = ?");
-    $stmt->execute([$_POST['cin']]);
-    if ($stmt->fetchColumn() > 0) {
-        $errors[] = "Ce numéro de CIN est déjà utilisé.";
+    if (!empty($_POST['cin'])) {
+        // Vérifier que le CIN n'est pas déjà utilisé
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM patients WHERE cin = ?");
+        $stmt->execute([$_POST['cin']]);
+        if ($stmt->fetchColumn() > 0) {
+            $errors[] = "Ce numéro de CIN est déjà utilisé.";
+        }
     }
 
-    // Vérifier que le nom d'utilisateur n'est pas déjà utilisé
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM patients WHERE username = ?");
-    $stmt->execute([$_POST['username']]);
-    if ($stmt->fetchColumn() > 0) {
-        $errors[] = "Ce nom d'utilisateur est déjà pris.";
+    if (!empty($_POST['username'])) {
+        // Vérifier que le nom d'utilisateur n'est pas déjà utilisé
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM patients WHERE username = ?");
+        $stmt->execute([$_POST['username']]);
+        if ($stmt->fetchColumn() > 0) {
+            $errors[] = "Ce nom d'utilisateur est déjà pris.";
+        }
     }
+
     if (!empty($_POST['security_question']) && empty($_POST['security_answer'])) {
         $errors[] = "Veuillez fournir une réponse à la question de sécurité.";
     }
+
     // Vérifier l'acceptation des conditions
     if (!isset($_POST['terms'])) {
         $errors[] = "Vous devez accepter les conditions d'utilisation.";
@@ -136,6 +154,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 
+// Connexion à la base de données pour charger les villes
+$pdo = getDatabaseConnection();
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -438,6 +458,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             flex-shrink: 0;
         }
 
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+            border-radius: 6px;
+        }
+
+        .error-message ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        #security_answer {
+            display: none;
+        }
+
         /* Media Queries pour la responsivité */
         @media (max-width: 900px) {
             .portal-container {
@@ -522,9 +560,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 padding: 12px;
             }
         }
-        #security_answer {
-            margin-top: 10px;
-        }
     </style>
 </head>
 <body>
@@ -571,36 +606,36 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     </div>
                 <?php endif; ?>
                 
-                <form id="registerForm" action="userInscrire.php" method="post" enctype="multipart/form-data">
+                <form id="registerForm" action="<?= htmlspecialchars($_SERVER['PHP_SELF']) ?>" method="post">
                     <div class="form-container">
                         <div class="form-column">
                             <div class="form-group">
                                 <label for="nom" class="required-field">Nom</label>
-                                <input type="text" id="nom" name="nom" required>
+                                <input type="text" id="nom" name="nom" value="<?= getOldValue('nom') ?>" required>
                             </div>
 
                             <div class="form-group">
                                 <label for="prenom" class="required-field">Prénom</label>
-                                <input type="text" id="prenom" name="prenom" required>
+                                <input type="text" id="prenom" name="prenom" value="<?= getOldValue('prenom') ?>" required>
                             </div>
 
                             <div class="form-group cin-group">
                                 <label for="cin" class="required-field">CIN</label>
                                 <span class="cin-info">?</span>
-                                <input type="text" id="cin" name="cin" placeholder="Format: AB123456" required>
+                                <input type="text" id="cin" name="cin" placeholder="Format: AB123456" value="<?= getOldValue('cin') ?>" required>
                             </div>
 
                             <div class="form-group">
-                                <label for="datenaissance" class="required-field">Date de naissance</label>
-                                <input type="date" id="date_naissance" name="date_naissance" required>
+                                <label for="date_naissance" class="required-field">Date de naissance</label>
+                                <input type="date" id="date_naissance" name="date_naissance" value="<?= getOldValue('date_naissance') ?>" required>
                             </div>
 
                             <div class="form-group">
                                 <label for="sexe" class="required-field">Sexe</label>
                                 <select id="sexe" name="sexe" required>
                                     <option value="">Sélectionnez</option>
-                                    <option value="M">Homme</option>
-                                    <option value="F">Femme</option>
+                                    <option value="M" <?= getOldValue('sexe') === 'M' ? 'selected' : '' ?>>Homme</option>
+                                    <option value="F" <?= getOldValue('sexe') === 'F' ? 'selected' : '' ?>>Femme</option>
                                 </select>
                             </div>
                         </div>
@@ -608,43 +643,48 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <div class="form-column">
                             <div class="form-group">
                                 <label for="email" class="required-field">Email</label>
-                                <input type="email" id="email" name="email" required>
+                                <input type="email" id="email" name="email" value="<?= getOldValue('email') ?>" required>
                             </div>
 
                             <div class="form-group">
                                 <label for="telephone" class="required-field">Téléphone</label>
-                                <input type="tel" id="telephone" name="telephone" placeholder="Ex: 0661234567" required>
+                                <input type="tel" id="telephone" name="telephone" placeholder="Ex: 0661234567" value="<?= getOldValue('telephone') ?>" required>
                             </div>
 
                             <div class="form-group">
-                                <label for="ville">Ville</label>
-                                <select id="ville" name="ville_id">
+                                <label for="ville_id">Ville</label>
+                                <select id="ville_id" name="ville_id">
                                     <option value="">Sélectionnez une ville</option>
                                     <?php
+                                    try {
                                         // Charger les villes depuis la base de données
                                         $stmt = $pdo->query("SELECT id, nom FROM villes ORDER BY nom ASC");
                                         while ($ville = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                                            echo "<option value='{$ville['id']}'>{$ville['nom']}</option>";
+                                            $selected = getOldValue('ville_id') == $ville['id'] ? 'selected' : '';
+                                            echo "<option value='{$ville['id']}' {$selected}>{$ville['nom']}</option>";
                                         }
+                                    } catch (PDOException $e) {
+                                        // Gérer l'erreur silencieusement
+                                    }
                                     ?>
                                 </select>
                             </div>
 
                             <div class="form-group">
                                 <label for="adresse">Adresse</label>
-                                <input type="text" id="adresse" name="adresse">
+                                <input type="text" id="adresse" name="adresse" value="<?= getOldValue('adresse') ?>">
                             </div>
 
                             <div class="form-group">
                                 <label for="mutuelle">Mutuelle</label>
                                 <select id="mutuelle" name="mutuelle">
                                     <option value="">Sélectionnez</option>
-                                    <option value="cnops">CNOPS</option>
-                                    <option value="cnss">CNSS</option>
-                                    <option value="ramed">RAMED</option>
-                                    <option value="amo">AMO</option>
-                                    <option value="autre">Autre</option>
-                                    <option value="aucune">Aucune</option>
+                                    <option value="cnops" <?= getOldValue('mutuelle') === 'cnops' ? 'selected' : '' ?>>CNOPS</option>
+                                    <option value="cnss" <?= getOldValue('mutuelle') === 'cnss' ? 'selected' : '' ?>>CNSS</option>
+                                    <option value="ramed" <?= getOldValue('mutuelle') === 'ramed' ? 'selected' : '' ?>>RAMED</option>
+                                    <option value="amo" <?= getOldValue('mutuelle') === 'amo' ? 'selected' : '' ?>>AMO</option>
+                                    <option value="autre" <?= getOldValue('mutuelle') === 'autre' ? 'selected' : '' ?>>Autre</option>
+                                    <option value="aucune" <?= getOldValue('mutuelle') === 'aucune' ? 'selected' : '' ?>>Aucune</option>
                                 </select>
                             </div>
                         </div>
@@ -656,7 +696,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <div class="form-column">
                             <div class="form-group">
                                 <label for="username" class="required-field">Nom d'utilisateur</label>
-                                <input type="text" id="username" name="username" required>
+                                <input type="text" id="username" name="username" value="<?= getOldValue('username') ?>" required>
                             </div>
 
                             <div class="form-group">
@@ -671,36 +711,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 <input type="password" id="confirm_password" name="confirm_password" required>
                             </div>
 
-
                             <div class="form-group">
                                 <label for="security_question">Question de sécurité</label>
                                 <select id="security_question" name="security_question">
                                     <option value="">Sélectionnez</option>
-                                    <option value="q1">Nom de jeune fille de votre mère</option>
-                                    <option value="q2">Nom de votre premier animal de compagnie</option>
-                                    <option value="q3">Ville de naissance de votre père</option>
-                                    <option value="q4">Nom de votre école primaire</option>
+                                    <option value="q1" <?= getOldValue('security_question') === 'q1' ? 'selected' : '' ?>>Nom de jeune fille de votre mère</option>
+                                    <option value="q2" <?= getOldValue('security_question') === 'q2' ? 'selected' : '' ?>>Nom de votre premier animal de compagnie</option>
+                                    <option value="q3" <?= getOldValue('security_question') === 'q3' ? 'selected' : '' ?>>Ville de naissance de votre père</option>
+                                    <option value="q4" <?= getOldValue('security_question') === 'q4' ? 'selected' : '' ?>>Nom de votre école primaire</option>
                                 </select>
                             </div>
 
                             <div class="form-group">
                                 <label for="security_answer">Réponse</label>
-                                <input type="text" id="security_answer" name="security_answer">
+                                <input type="text" id="security_answer" name="security_answer" value="<?= getOldValue('security_answer') ?>">
                             </div>
-
                         </div>
                     </div>
 
                     <div class="checkbox-group">
                         <label>
                             <input type="checkbox" name="terms" required>
-                            J'accepte les <a href="usertermes&privacy.php"> conditions d'utilisation et la politique de confidentialité</a>  de MediStatView
+                            J'accepte les <a href="usertermes&privacy.php">conditions d'utilisation et la politique de confidentialité</a> de MediStatView
                         </label>
                     </div>
 
                     <div class="checkbox-group">
                         <label>
-                            <input type="checkbox" name="notifications">
+                            <input type="checkbox" name="notifications" <?= isset($old['notifications']) ? 'checked' : '' ?>>
                             J'accepte de recevoir des notifications par email concernant mes rendez-vous et résultats
                         </label>
                     </div>
@@ -729,7 +767,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 </svg>
                 05-2000-0000
             </a>
-            
             <a href="mailto:supportmaroc@medistatview.com" class="footer-item">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                     <path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414.05 3.555zM0 4.697v7.104l5.803-3.558L0 4.697zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586l-1.239-.757zm3.436-.586L16 11.801V4.697l-5.803 3.546z"/>
