@@ -195,3 +195,5 @@ CREATE TABLE logs_acces (
 
 ALTER TABLE patients 
     ADD COLUMN statut ENUM('actif', 'en_attente', 'suspendu') DEFAULT 'en_attente' AFTER last_login_at;
+    -- Ajouter la colonne username à la table patients
+    ADD COLUMN username VARCHAR(50) NOT NULL UNIQUE AFTER email;

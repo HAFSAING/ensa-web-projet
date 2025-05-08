@@ -472,9 +472,6 @@ $pdo = getDatabaseConnection();
             padding-left: 20px;
         }
 
-        #security_answer {
-            display: none;
-        }
 
         /* Media Queries pour la responsivité */
         @media (max-width: 900px) {
@@ -721,14 +718,14 @@ $pdo = getDatabaseConnection();
                                     <option value="q4" <?= getOldValue('security_question') === 'q4' ? 'selected' : '' ?>>Nom de votre école primaire</option>
                                 </select>
                             </div>
-
-                            <div class="form-group">
+                            <div class="form-group" id="security_answer_group" style="display: none;">
                                 <label for="security_answer">Réponse</label>
                                 <input type="text" id="security_answer" name="security_answer" value="<?= getOldValue('security_answer') ?>">
                             </div>
                         </div>
                     </div>
 
+                    
                     <div class="checkbox-group">
                         <label>
                             <input type="checkbox" name="terms" required>
@@ -782,11 +779,28 @@ $pdo = getDatabaseConnection();
             </a>
         </div>
     </footer>
-<script>
-    document.getElementById('security_question').addEventListener('change', function() {
-    const answerField = document.getElementById('security_answer');
-    answerField.style.display = this.value ? 'block' : 'none';
-});
-</script>
+    <script>
+
+        // Fonction pour afficher ou masquer le groupe du champ de réponse
+        function toggleSecurityAnswer() {
+            const questionField = document.getElementById('security_question');
+            const answerGroup = document.getElementById('security_answer_group');
+            
+            // Vérifier si une question est sélectionnée et afficher/masquer le champ de réponse en conséquence
+            if (questionField.value) {
+                answerGroup.style.display = 'block';
+            } else {
+                answerGroup.style.display = 'none';
+            }
+        }
+
+        // Initialiser l'état au chargement de la page
+        document.addEventListener('DOMContentLoaded', function() {
+            toggleSecurityAnswer();
+            
+            // Ajouter l'écouteur d'événement pour le changement
+            document.getElementById('security_question').addEventListener('change', toggleSecurityAnswer);
+        });
+    </script>
 </body>
 </html>
