@@ -193,3 +193,5 @@ CREATE TABLE logs_acces (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE patients 
+    ADD COLUMN statut ENUM('actif', 'en_attente', 'suspendu') DEFAULT 'en_attente' AFTER last_login_at;

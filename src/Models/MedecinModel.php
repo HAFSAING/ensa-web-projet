@@ -9,7 +9,7 @@ class MedecinModel {
         $this->db = new \PDO(
             "mysql:host=localhost;dbname=medistatview;charset=utf8mb4", 
             "root",
-            "2004",     
+            "",     
             [
                 \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
                 \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC
