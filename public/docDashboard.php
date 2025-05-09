@@ -712,25 +712,25 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" class="nav-link">
+                            <a href="docPatient.php" class="nav-link">
                                 <i class="fas fa-user-injured"></i>
                                 <span>Patients</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" class="nav-link">
+                            <a href="docRendezVous.php" class="nav-link">
                                 <i class="fas fa-calendar-alt"></i>
                                 <span>Rendez-vous</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" class="nav-link">
+                            <a href="docDossier.php" class="nav-link">
                                 <i class="fas fa-file-medical"></i>
                                 <span>Dossiers</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" class="nav-link">
+                            <a href="docPrescriptions.php" class="nav-link">
                                 <i class="fas fa-pills"></i>
                                 <span>Prescriptions</span>
                             </a>
@@ -748,12 +748,12 @@
                         <i class="fas fa-chevron-down" style="margin-left: 10px; font-size: 0.8rem;"></i>
                     </button>
                     <div class="dropdown-content">
-                        <a href="#"><i class="fas fa-user"></i> Mon profil</a>
+                        <a href="docProfile.php"><i class="fas fa-user"></i> Mon profil</a>
                         <a href="#"><i class="fas fa-cog"></i> Paramètres</a>
                         <a href="#"><i class="fas fa-bell"></i> Notifications</a>
                         <div class="dropdown-divider"></div>
                         <a href="#"><i class="fas fa-question-circle"></i> Aide & Support</a>
-                        <a href="#" style="color: #d32f2f;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+                        <a href="docDeconnection.php" style="color: #d32f2f;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
                     </div>
                 </div>
             </div>

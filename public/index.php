@@ -1043,25 +1043,25 @@ header {
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" class="nav-link">
+                            <a href="userPharmacie.php" class="nav-link">
                                 <i class="fas fa-pills"></i>
                                 <span>Pharmacie</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" class="nav-link">
+                            <a href="medicaments.php" class="nav-link">
                                 <i class="fas fa-capsules"></i>
                                 <span>Médicaments</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" class="nav-link">
+                            <a href="Questions.php" class="nav-link">
                                 <i class="fas fa-question-circle"></i>
                                 <span>Questions</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" class="nav-link">
+                            <a href="Magazine.php" class="nav-link">
                                 <i class="fas fa-book-medical"></i>
                                 <span>Magazine</span>
                             </a>
@@ -1177,7 +1177,7 @@ header {
             
             <div class="footer-column footer-contact">
                 <h3>Contact</h3>
-                <p><span class="contact-icon">📍</span> 123 Avenue de la Santé, 75001 Paris</p>
+                <p><span class="contact-icon">📍</span> 123 Avenue de la Santé, 75001 casa</p>
                 <p><span class="contact-icon">📞</span> +212 5 23 45 67 89</p>
                 <p><span class="contact-icon">✉️</span> contact@gmail.com</p>
                 <p><span class="contact-icon">🕒</span> Lun - Ven: 9h00 - 18h00</p>
