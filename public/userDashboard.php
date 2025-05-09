@@ -880,16 +880,16 @@
                         <i class="fas fa-chevron-down"></i>
                     </button>
                     <div class="dropdown-menu" id="userDropdown">
-                        <a href="patientProfil.php" class="dropdown-item">
+                        <a href="userProfile.php" class="dropdown-item">
                             <i class="fas fa-user"></i>
                             <span>Mon profil</span>
                         </a>
-                        <a href="patientParametres.php" class="dropdown-item">
+                        <a href="userParametres.php" class="dropdown-item">
                             <i class="fas fa-cog"></i>
                             <span>Paramètres</span>
                         </a>
                         <div class="dropdown-divider"></div>
-                        <a href="userConnecter.php" class="dropdown-item">
+                        <a href="Deconnection.php" class="dropdown-item">
                             <i class="fas fa-sign-out-alt"></i>
                             <span>Déconnexion</span>
                         </a>

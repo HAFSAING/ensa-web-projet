@@ -1036,8 +1036,14 @@ header {
 
                 <nav class="main-nav">
                     <ul class="nav-list">
+                       <li>
+                            <a href="index.php" class="nav-link active">
+                                <i class="fas fa-home"></i>
+                                <span>Accueil</span>
+                            </a>
+                        </li>
                         <li class="nav-item">
-                            <a href="docFilterMedcin.php" class="nav-link active">
+                            <a href="docFilterMedcin.php" class="nav-link">
                                 <i class="fas fa-user-md"></i>
                                 <span>Médecin</span>
                             </a>

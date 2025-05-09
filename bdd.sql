@@ -197,3 +197,66 @@ ALTER TABLE patients
     ADD COLUMN statut ENUM('actif', 'en_attente', 'suspendu') DEFAULT 'en_attente' AFTER last_login_at;
     -- Ajouter la colonne username à la table patients
     ADD COLUMN username VARCHAR(50) NOT NULL UNIQUE AFTER email;
+
+-- Table des catégories d'articles
+CREATE TABLE categories_articles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nom VARCHAR(100) NOT NULL,
+    description TEXT,
+    slug VARCHAR(100) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Table des articles
+CREATE TABLE articles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    medecin_id INT NOT NULL,
+    categorie_id INT NOT NULL,
+    titre VARCHAR(100) NOT NULL,
+    slug VARCHAR(200) NOT NULL UNIQUE,
+    contenu TEXT NOT NULL,
+    image_principale VARCHAR(255),
+    resume TEXT,
+    statut ENUM('publie', 'brouillon', 'archive') DEFAULT 'brouillon',
+    est_mis_en_avant BOOLEAN DEFAULT FALSE,
+    date_publication TIMESTAMP NULL,
+    nb_vues INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (medecin_id) REFERENCES medecins(id) ON DELETE CASCADE,
+    FOREIGN KEY (categorie_id) REFERENCES categories_articles(id) ON DELETE CASCADE
+);
+
+-- Table des commentaires d'articles
+CREATE TABLE commentaires_articles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    article_id INT NOT NULL,
+    patient_id INT NULL,
+    nom VARCHAR(100) NULL, -- Pour les commentaires anonymes
+    email VARCHAR(100) NULL, -- Pour les commentaires anonymes
+    contenu TEXT NOT NULL,
+    approuve BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE,
+    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE SET NULL
+);
+
+-- Table des tags d'articles
+CREATE TABLE tags (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nom VARCHAR(50) NOT NULL UNIQUE,
+    slug VARCHAR(50) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Table de relation entre articles et tags
+CREATE TABLE articles_tags (
+    article_id INT NOT NULL,
+    tag_id INT NOT NULL,
+    PRIMARY KEY (article_id, tag_id),
+    FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+);

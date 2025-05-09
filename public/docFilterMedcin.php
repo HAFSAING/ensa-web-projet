@@ -474,6 +474,158 @@
                 width: 100%;
             }
         }
+        footer {
+            background-color: var(--primary-color);
+            color: var(--text-light);
+            padding: 4rem 2rem 2rem;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+        }
+
+        .footer-column h3 {
+            font-size: 1.3rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .footer-column h3::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 40px;
+            height: 3px;
+            background-color: var(--accent-color1);
+        }
+
+        .footer-column p {
+            color: #ccc;
+            margin-bottom: 1.2rem;
+            line-height: 1.6;
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 0.8rem;
+        }
+
+        .footer-links a {
+            color: #ccc;
+            text-decoration: none;
+            transition: color 0.3s ease;
+            display: inline-block;
+        }
+
+        .footer-links a:hover {
+            color: var(--accent-color1);
+            transform: translateX(5px);
+        }
+
+        .footer-contact p {
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .contact-icon {
+            margin-right: 0.8rem;
+            color: var(--accent-color1);
+            display: inline-flex;
+            width: 24px;
+            justify-content: center;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .social-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .social-icon:hover {
+            background-color: var(--accent-color1);
+            transform: translateY(-3px);
+        }
+
+        .google-map {
+            width: 100%;
+            overflow: hidden;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .copyright {
+            text-align: center;
+            padding-top: 2rem;
+            margin-top: 3rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: #ccc;
+        }
+
+        .legal-links {
+            margin-top: 1rem;
+        }
+
+        .legal-links a {
+            color: #ccc;
+            text-decoration: none;
+            transition: color 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .legal-links a:hover {
+            color: var(--accent-color1);
+        }
+
+        /* Responsive design pour le footer */
+        @media (max-width: 768px) {
+            .footer-content {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .footer-column.footer-map {
+                grid-column: span 2;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .footer-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .footer-column.footer-map {
+                grid-column: span 1;
+            }
+            
+            .legal-links {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+        }
     </style>
 </head>
 <body>
@@ -491,25 +643,37 @@
                 <nav class="main-nav">
                     <ul class="nav-list">
                         <li class="nav-item">
-                            <a href="#" class="nav-link active">
+                            <a href="index.php" class="nav-link">
+                                <i class="fas fa-home"></i>
+                                <span>Accueil</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="docFilterMedcin.php" class="nav-link active">
                                 <i class="fas fa-user-md"></i>
                                 <span>Médecin</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" class="nav-link">
+                            <a href="userPharmacie.php" class="nav-link">
                                 <i class="fas fa-pills"></i>
                                 <span>Pharmacie</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" class="nav-link">
+                            <a href="medicaments.php" class="nav-link">
+                                <i class="fas fa-capsules"></i>
+                                <span>Médicaments</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="Questions.php" class="nav-link">
                                 <i class="fas fa-question-circle"></i>
                                 <span>Questions</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a href="#" class="nav-link">
+                            <a href="Magazine.php" class="nav-link">
                                 <i class="fas fa-book-medical"></i>
                                 <span>Magazine</span>
                             </a>
@@ -717,7 +881,6 @@
         </main>
     </div>
 
-    <!-- Footer -->
     <footer>
         <div class="footer-content">
             <div class="footer-column">
@@ -753,7 +916,7 @@
             
             <div class="footer-column footer-contact">
                 <h3>Contact</h3>
-                <p><span class="contact-icon">📍</span> 123 Avenue de la Santé, 75001 Paris</p>
+                <p><span class="contact-icon">📍</span> 123 Avenue de la Santé, 75001 casa</p>
                 <p><span class="contact-icon">📞</span> +212 5 23 45 67 89</p>
                 <p><span class="contact-icon">✉️</span> contact@gmail.com</p>
                 <p><span class="contact-icon">🕒</span> Lun - Ven: 9h00 - 18h00</p>

@@ -1,58 +1,54 @@
 <?php
+// Inclure le fichier de connexion à la base de données
 require_once __DIR__ . '/../config/database.php';
 $conn = getDatabaseConnection();
 
-// Récupération des catégories
-$stmt_categories = $conn->prepare("SELECT * FROM categories_articles ORDER BY nom ASC");
-$stmt_categories->execute();
-$categories = $stmt_categories->fetchAll(PDO::FETCH_ASSOC);
+// Récupération de l'ID du médecin
+$medecin_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-// Récupération des articles mis en avant
-$stmt_spotlight = $conn->prepare("
-    SELECT a.*, c.nom as categorie_nom, m.nom as medecin_nom, m.prenom as medecin_prenom, 
-           s.nom as specialite_nom
-    FROM articles a
-    JOIN categories_articles c ON a.categorie_id = c.id
-    JOIN medecins m ON a.medecin_id = m.id
+if ($medecin_id <= 0) {
+    header('Location: Magazine.php');
+    exit;
+}
+
+// Récupération des informations du médecin
+$stmt_doctor = $conn->prepare("
+    SELECT m.*, s.nom as specialite_nom
+    FROM medecins m
     JOIN specialites s ON m.specialite_id = s.id
-    WHERE a.est_mis_en_avant = 1 AND a.statut = 'publie'
-    ORDER BY a.date_publication DESC
-    LIMIT 3
+    WHERE m.id = :medecin_id
 ");
-$stmt_spotlight->execute();
-$articles_spotlight = $stmt_spotlight->fetchAll(PDO::FETCH_ASSOC);
+$stmt_doctor->bindParam(':medecin_id', $medecin_id);
+$stmt_doctor->execute();
+$medecin = $stmt_doctor->fetch(PDO::FETCH_ASSOC);
+
+if (!$medecin) {
+    header('Location: Magazine.php');
+    exit;
+}
 
 // Filtrage par catégorie si spécifié
 $categorie_id = isset($_GET['categorie']) ? (int)$_GET['categorie'] : 0;
 $whereClause = $categorie_id > 0 ? "AND a.categorie_id = :categorie_id" : "";
-
-// Recherche si spécifiée
-$search = isset($_GET['search']) ? $_GET['search'] : '';
-$searchClause = !empty($search) ? "AND (a.titre LIKE :search OR a.resume LIKE :search OR a.contenu LIKE :search)" : "";
 
 // Pagination
 $articles_par_page = 6;
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $articles_par_page;
 
-// Récupération des articles (avec pagination, filtrage et recherche)
-$sql_articles = "
-    SELECT a.*, c.nom as categorie_nom, m.nom as medecin_nom, m.prenom as medecin_prenom, 
-           s.nom as specialite_nom, COUNT(ca.id) as nb_commentaires
+// Récupération des articles du médecin (avec pagination et filtrage)
+$stmt_articles = $conn->prepare("
+    SELECT a.*, c.nom as categorie_nom, COUNT(ca.id) as nb_commentaires
     FROM articles a
     JOIN categories_articles c ON a.categorie_id = c.id
-    JOIN medecins m ON a.medecin_id = m.id
-    JOIN specialites s ON m.specialite_id = s.id
     LEFT JOIN commentaires_articles ca ON a.id = ca.article_id AND ca.approuve = 1
-    WHERE a.statut = 'publie' 
+    WHERE a.medecin_id = :medecin_id AND a.statut = 'publie'
     $whereClause
-    $searchClause
     GROUP BY a.id
     ORDER BY a.date_publication DESC
     LIMIT :offset, :limit
-";
-
-$stmt_articles = $conn->prepare($sql_articles);
+");
+$stmt_articles->bindParam(':medecin_id', $medecin_id);
 $stmt_articles->bindParam(':offset', $offset, PDO::PARAM_INT);
 $stmt_articles->bindParam(':limit', $articles_par_page, PDO::PARAM_INT);
 
@@ -60,61 +56,68 @@ if ($categorie_id > 0) {
     $stmt_articles->bindParam(':categorie_id', $categorie_id, PDO::PARAM_INT);
 }
 
-if (!empty($search)) {
-    $searchParam = "%$search%";
-    $stmt_articles->bindParam(':search', $searchParam, PDO::PARAM_STR);
-}
-
 $stmt_articles->execute();
 $articles = $stmt_articles->fetchAll(PDO::FETCH_ASSOC);
 
 // Compter le nombre total d'articles pour la pagination
 $sql_count = "
-    SELECT COUNT(DISTINCT a.id) as total
+    SELECT COUNT(*) as total
     FROM articles a
-    WHERE a.statut = 'publie'
+    WHERE a.medecin_id = :medecin_id AND a.statut = 'publie'
     $whereClause
-    $searchClause
 ";
 
 $stmt_count = $conn->prepare($sql_count);
+$stmt_count->bindParam(':medecin_id', $medecin_id);
 
 if ($categorie_id > 0) {
     $stmt_count->bindParam(':categorie_id', $categorie_id, PDO::PARAM_INT);
-}
-
-if (!empty($search)) {
-    $stmt_count->bindParam(':search', $searchParam, PDO::PARAM_STR);
 }
 
 $stmt_count->execute();
 $total_articles = $stmt_count->fetch(PDO::FETCH_ASSOC)['total'];
 $total_pages = ceil($total_articles / $articles_par_page);
 
-// Récupération des médecins populaires (avec le plus d'articles)
+// Récupération des statistiques du médecin
+$stmt_stats = $conn->prepare("
+    SELECT 
+        COUNT(a.id) as total_articles,
+        SUM(a.nb_vues) as total_vues,
+        COUNT(DISTINCT a.categorie_id) as nb_categories
+    FROM articles a
+    WHERE a.medecin_id = :medecin_id AND a.statut = 'publie'
+");
+$stmt_stats->bindParam(':medecin_id', $medecin_id);
+$stmt_stats->execute();
+$stats = $stmt_stats->fetch(PDO::FETCH_ASSOC);
+
+// Récupération des catégories des articles du médecin
+$stmt_categories = $conn->prepare("
+    SELECT DISTINCT c.id, c.nom, COUNT(a.id) as nb_articles
+    FROM categories_articles c
+    JOIN articles a ON c.id = a.categorie_id
+    WHERE a.medecin_id = :medecin_id AND a.statut = 'publie'
+    GROUP BY c.id
+    ORDER BY nb_articles DESC
+");
+$stmt_categories->bindParam(':medecin_id', $medecin_id);
+$stmt_categories->execute();
+$categories = $stmt_categories->fetchAll(PDO::FETCH_ASSOC);
+
+// Récupération des autres médecins populaires
 $stmt_doctors = $conn->prepare("
     SELECT m.id, m.nom, m.prenom, s.nom as specialite, COUNT(a.id) as nb_articles
     FROM medecins m
     JOIN specialites s ON m.specialite_id = s.id
     JOIN articles a ON m.id = a.medecin_id
-    WHERE a.statut = 'publie'
+    WHERE a.statut = 'publie' AND m.id != :medecin_id
     GROUP BY m.id
     ORDER BY nb_articles DESC
     LIMIT 5
 ");
+$stmt_doctors->bindParam(':medecin_id', $medecin_id);
 $stmt_doctors->execute();
 $popular_doctors = $stmt_doctors->fetchAll(PDO::FETCH_ASSOC);
-
-// Récupération des articles récents
-$stmt_recent = $conn->prepare("
-    SELECT a.id, a.titre, a.slug, a.date_publication
-    FROM articles a
-    WHERE a.statut = 'publie'
-    ORDER BY a.date_publication DESC
-    LIMIT 5
-");
-$stmt_recent->execute();
-$recent_articles = $stmt_recent->fetchAll(PDO::FETCH_ASSOC);
 
 // Fonction pour tronquer du texte
 function truncate_text($text, $length = 150) {
@@ -134,12 +137,15 @@ function format_date($date) {
 }
 ?>
 
+<!-- Le reste du code HTML reste inchangé, sauf pour les liens de catégorie -->
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Magazine Santé - MediStatView</title>
+    <title>Articles du Dr. <?= htmlspecialchars($medecin['prenom']) ?> <?= htmlspecialchars($medecin['nom']) ?> - MediStatView</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --primary-color: #1d566b;
@@ -260,57 +266,92 @@ function format_date($date) {
             border-radius: 10px;
         }
 
-        /* Magazine specific styles */
-        .magazine-header {
+        /* Doctor Profile Banner */
+        .doctor-banner {
             background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             color: var(--text-light);
             padding: 3rem 0;
-            text-align: center;
             margin-bottom: 2rem;
         }
 
-        .magazine-header h1 {
-            font-size: 2.5rem;
+        .doctor-banner-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .doctor-banner-image {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 5px solid var(--accent-color1);
+            background-color: var(--accent-color2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: white;
+        }
+
+        .doctor-banner-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .doctor-banner-info {
+            flex: 1;
+        }
+
+        .doctor-banner-name {
+            font-size: 2.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .doctor-banner-specialty {
+            font-size: 1.2rem;
+            opacity: 0.9;
             margin-bottom: 1rem;
         }
 
-        .magazine-header p {
+        .doctor-banner-bio {
+            margin-bottom: 1.5rem;
             max-width: 800px;
-            margin: 0 auto;
-            font-size: 1.1rem;
+            line-height: 1.8;
+        }
+
+        .doctor-stats {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+
+        .doctor-stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            border-radius: 10px;
+            min-width: 120px;
+        }
+
+        .doctor-stat-number {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--accent-color1);
+        }
+
+        .doctor-stat-label {
+            font-size: 0.9rem;
             opacity: 0.9;
         }
 
-        .search-box {
-            max-width: 600px;
-            margin: 1.5rem auto 0;
-            display: flex;
-            overflow: hidden;
-            border-radius: 50px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        }
-
-        .search-box input {
-            flex: 1;
-            padding: 0.8rem 1.5rem;
-            border: none;
-            font-size: 1rem;
-        }
-
-        .search-box button {
-            background-color: var(--accent-color1);
-            color: var(--text-dark);
-            border: none;
-            padding: 0 1.5rem;
-            cursor: pointer;
-            font-weight: 600;
-            transition: background-color 0.3s;
-        }
-
-        .search-box button:hover {
-            background-color: #6aa889;
-        }
-
+        /* Magazine Layout */
         .magazine-layout {
             display: grid;
             grid-template-columns: 1fr 350px;
@@ -326,10 +367,6 @@ function format_date($date) {
 
         .sidebar {
             width: 100%;
-        }
-
-        .spotlight-section {
-            margin-bottom: 3rem;
         }
 
         .section-title {
@@ -351,13 +388,47 @@ function format_date($date) {
             background-color: var(--accent-color1);
         }
 
-        .spotlight-grid {
+        .categories-list {
+            margin-bottom: 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.7rem;
+        }
+
+        .category-link {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background-color: white;
+            color: var(--primary-color);
+            text-decoration: none;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .category-link:hover, .category-link.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .category-count {
+            display: inline-block;
+            background-color: rgba(0, 0, 0, 0.1);
+            padding: 0.1rem 0.5rem;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            margin-left: 5px;
+        }
+
+        .articles-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 1.5rem;
+            margin-bottom: 2rem;
         }
 
-        .spotlight-article {
+        .article-card {
             background-color: white;
             border-radius: 10px;
             overflow: hidden;
@@ -368,7 +439,7 @@ function format_date($date) {
             flex-direction: column;
         }
 
-        .spotlight-article:hover {
+        .article-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 10px 20px rgba(0,0,0,0.15);
         }
@@ -424,78 +495,9 @@ function format_date($date) {
             margin-top: auto;
         }
 
-        .doctor-info {
-            display: flex;
-            align-items: center;
-        }
-
-        .doctor-avatar {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            background-color: var(--accent-color2);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            margin-right: 8px;
-            font-size: 0.9rem;
-        }
-
         .article-date {
             display: flex;
             align-items: center;
-        }
-
-        .categories-list {
-            margin-bottom: 2rem;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.7rem;
-        }
-
-        .category-link {
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            background-color: white;
-            color: var(--primary-color);
-            text-decoration: none;
-            border-radius: 30px;
-            font-size: 0.9rem;
-            transition: all 0.3s;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-
-        .category-link:hover, .category-link.active {
-            background-color: var(--primary-color);
-            color: white;
-        }
-
-        .all-articles {
-            margin-bottom: 3rem;
-        }
-
-        .articles-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .article-card {
-            background-color: white;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: var(--shadow);
-            transition: transform 0.3s, box-shadow 0.3s;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .article-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
         }
 
         .pagination {
@@ -525,6 +527,7 @@ function format_date($date) {
             color: white;
         }
 
+        /* Sidebar */
         .sidebar-widget {
             background-color: white;
             border-radius: 10px;
@@ -569,9 +572,16 @@ function format_date($date) {
             color: var(--secondary-color);
         }
 
-        .doctor-link .doctor-avatar {
+        .doctor-avatar {
             width: 40px;
             height: 40px;
+            border-radius: 50%;
+            background-color: var(--accent-color2);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
             margin-right: 10px;
         }
 
@@ -589,45 +599,11 @@ function format_date($date) {
             color: #777;
         }
 
-        .doctor-stats {
+        .doctor-stats-small {
             font-size: 0.8rem;
             color: #999;
             display: flex;
             align-items: center;
-        }
-
-        .recent-articles {
-            list-style: none;
-        }
-
-        .recent-article-item {
-            margin-bottom: 1rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid #eee;
-        }
-
-        .recent-article-item:last-child {
-            margin-bottom: 0;
-            padding-bottom: 0;
-            border-bottom: none;
-        }
-
-        .recent-article-link {
-            text-decoration: none;
-            color: var(--text-dark);
-            transition: color 0.3s;
-            display: block;
-            font-weight: 500;
-        }
-
-        .recent-article-link:hover {
-            color: var(--secondary-color);
-        }
-
-        .recent-article-date {
-            font-size: 0.8rem;
-            color: #777;
-            margin-top: 0.3rem;
         }
 
         /* Empty state */
@@ -661,19 +637,24 @@ function format_date($date) {
             .magazine-layout {
                 grid-template-columns: 1fr;
             }
+            
+            .doctor-banner-content {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .doctor-stats {
+                justify-content: center;
+            }
         }
 
         @media (max-width: 768px) {
-            .spotlight-grid, .articles-grid {
+            .articles-grid {
                 grid-template-columns: 1fr;
             }
             
-            .magazine-header h1 {
-                font-size: 2rem;
-            }
-            
-            .magazine-header p {
-                font-size: 1rem;
+            .doctor-banner-name {
+                font-size: 1.8rem;
             }
         }
 
@@ -767,8 +748,6 @@ function format_date($date) {
             border-top: 1px solid rgba(255,255,255,0.1);
         }
     </style>
-    <!-- Ajouter Font Awesome pour les icônes -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <!-- Header avec navigation -->
@@ -784,7 +763,7 @@ function format_date($date) {
 
                 <nav class="main-nav">
                     <ul class="nav-list">
-                       <li>
+                        <li>
                             <a href="index.php" class="nav-link">
                                 <i class="fas fa-home"></i>
                                 <span>Accueil</span>
@@ -826,16 +805,41 @@ function format_date($date) {
         </div>
     </header>
 
-    <!-- Magazine Header with Search -->
-    <section class="magazine-header">
-        <div class="container">
-            <h1>Magazine Santé MediStatView</h1>
-            <p>Découvrez les derniers articles et conseils rédigés par nos médecins experts pour prendre soin de votre santé au quotidien.</p>
-            
-            <form action="Magazine.php" method="GET" class="search-box">
-                <input type="text" name="search" placeholder="Rechercher un article..." value="<?= htmlspecialchars($search) ?>">
-                <button type="submit"><i class="fas fa-search"></i> Rechercher</button>
-            </form>
+    <!-- Doctor Profile Banner -->
+    <section class="doctor-banner">
+        <div class="doctor-banner-content">
+            <div class="doctor-banner-image">
+                <?php if (!empty($medecin['image_principale'])): ?>
+                    <img src="<?= htmlspecialchars($medecin['image_principale']) ?>" alt="Dr. <?= htmlspecialchars($medecin['prenom']) ?> <?= htmlspecialchars($medecin['nom']) ?>">
+                <?php else: ?>
+                    <?= substr(htmlspecialchars($medecin['prenom']), 0, 1) . substr(htmlspecialchars($medecin['nom']), 0, 1) ?>
+                <?php endif; ?>
+            </div>
+            <div class="doctor-banner-info">
+                <h1 class="doctor-banner-name">Dr. <?= htmlspecialchars($medecin['prenom']) ?> <?= htmlspecialchars($medecin['nom']) ?></h1>
+                <div class="doctor-banner-specialty"><?= htmlspecialchars($medecin['specialite_nom']) ?></div>
+                
+                <?php if (!empty($medecin['bio'])): ?>
+                <div class="doctor-banner-bio">
+                    <?= htmlspecialchars($medecin['bio']) ?>
+                </div>
+                <?php endif; ?>
+                
+                <div class="doctor-stats">
+                    <div class="doctor-stat-item">
+                        <div class="doctor-stat-number"><?= $stats['total_articles'] ?></div>
+                        <div class="doctor-stat-label">Articles</div>
+                    </div>
+                    <div class="doctor-stat-item">
+                        <div class="doctor-stat-number"><?= $stats['total_vues'] ?></div>
+                        <div class="doctor-stat-label">Vues</div>
+                    </div>
+                    <div class="doctor-stat-item">
+                        <div class="doctor-stat-number"><?= $stats['nb_categories'] ?></div>
+                        <div class="doctor-stat-label">Catégories</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
     
@@ -843,91 +847,48 @@ function format_date($date) {
     <div class="magazine-layout">
         <div class="content-area">
             <!-- Catégories -->
-            <div class="categories-list">
-                <a href="Magazine.php" class="category-link <?= $categorie_id == 0 ? 'active' : '' ?>">Tous</a>
-                <?php foreach ($categories as $categorie): ?>
-                    <a href="Magazine.php?categorie=<?= $categorie['id'] ?>" class="category-link <?= $categorie_id == $categorie['id'] ? 'active' : '' ?>">
-                        <?= htmlspecialchars($categorie['nom']) ?>
-                    </a>
-                <?php endforeach; ?>
-            </div>
-            
-            <!-- Articles à la une -->
-            <?php if (count($articles_spotlight) > 0): ?>
-                <section class="spotlight-section">
-                    <h2 class="section-title">À la une</h2>
-                    <div class="spotlight-grid">
-                        <?php foreach ($articles_spotlight as $article): ?>
-                            <article class="spotlight-article">
-                                <div class="article-image" style="background-image: url('<?= !empty($article['image_url']) ? htmlspecialchars($article['image_url']) : 'assets/images/default-article.jpg' ?>')">
-                                    <span class="article-category"><?= htmlspecialchars($article['categorie_nom']) ?></span>
-                                </div>
-                                <div class="article-content">
-                                    <a href="doctor-articles.php?slug=<?= htmlspecialchars($article['slug']) ?>" class="article-title">
-                                        <h3><?= htmlspecialchars($article['titre']) ?></h3>
-                                    </a>
-                                    <div class="article-excerpt">
-                                        <?= truncate_text(htmlspecialchars($article['resume'])) ?>
-                                    </div>
-                                    <div class="article-meta">
-                                        <div class="doctor-info">
-                                            <div class="doctor-avatar">
-                                                <?= substr(htmlspecialchars($article['medecin_prenom']), 0, 1) . substr(htmlspecialchars($article['medecin_nom']), 0, 1) ?>
-                                            </div>
-                                            <span>Dr. <?= htmlspecialchars($article['medecin_prenom']) ?> <?= htmlspecialchars($article['medecin_nom']) ?></span>
-                                        </div>
-                                        <div class="article-date">
-                                            <i class="far fa-calendar-alt" style="margin-right: 5px;"></i>
-                                            <?= format_date($article['date_publication']) ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            </article>
-                        <?php endforeach; ?>
-                    </div>
-                </section>
+            <?php if (count($categories) > 0): ?>
+                <div class="categories-list">
+                    <a href="doctor-articles.php?id=<?= $medecin_id ?>" class="category-link <?= $categorie_id == 0 ? 'active' : '' ?>">Tous</a>
+                    <?php foreach ($categories as $categorie): ?>
+                        <a href="doctor-articles.php?id=<?= $medecin_id ?>&categorie=<?= $categorie['id'] ?>" class="category-link <?= $categorie_id == $categorie['id'] ? 'active' : '' ?>">
+                            <?= htmlspecialchars($categorie['nom']) ?>
+                            <span class="category-count"><?= $categorie['nb_articles'] ?></span>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
             <?php endif; ?>
             
-            <!-- Tous les articles -->
+            <!-- Articles du médecin -->
             <section class="all-articles">
-                <h2 class="section-title">
-                    <?php if ($categorie_id > 0): ?>
-                        Articles dans <?= htmlspecialchars($categories[array_search($categorie_id, array_column($categories, 'id'))]['nom']) ?>
-                    <?php elseif (!empty($search)): ?>
-                        Résultats de recherche pour "<?= htmlspecialchars($search) ?>"
-                    <?php else: ?>
-                        Tous les articles
-                    <?php endif; ?>
-                </h2>
+                <h2 class="section-title">Articles du Dr. <?= htmlspecialchars($medecin['prenom']) ?> <?= htmlspecialchars($medecin['nom']) ?></h2>
                 
                 <?php if (count($articles) > 0): ?>
                     <div class="articles-grid">
                         <?php foreach ($articles as $article): ?>
                             <article class="article-card">
-                                <div class="article-image" style="background-image: url('<?= !empty($article['image_url']) ? htmlspecialchars($article['image_url']) : 'assets/images/default-article.jpg' ?>')">
+                                <div class="article-image" style="background-image: url('<?= !empty($article['image_principale']) ? htmlspecialchars($article['image_principale']) : 'assets/images/default-article.jpg' ?>')">
                                     <span class="article-category"><?= htmlspecialchars($article['categorie_nom']) ?></span>
                                 </div>
                                 <div class="article-content">
-                                    <a href="doctor-articles.php?slug=<?= htmlspecialchars($article['slug']) ?>" class="article-title">
+                                    <a href="article.php?slug=<?= htmlspecialchars($article['slug']) ?>" class="article-title">
                                         <h3><?= htmlspecialchars($article['titre']) ?></h3>
                                     </a>
                                     <div class="article-excerpt">
                                         <?= truncate_text(htmlspecialchars($article['resume'])) ?>
                                     </div>
                                     <div class="article-meta">
-                                        <div class="doctor-info">
-                                            <div class="doctor-avatar">
-                                                <?= substr(htmlspecialchars($article['medecin_prenom']), 0, 1) . substr(htmlspecialchars($article['medecin_nom']), 0, 1) ?>
-                                            </div>
-                                            <span>Dr. <?= htmlspecialchars($article['medecin_prenom']) ?> <?= htmlspecialchars($article['medecin_nom']) ?></span>
-                                        </div>
                                         <div class="article-date">
                                             <i class="far fa-calendar-alt" style="margin-right: 5px;"></i>
                                             <?= format_date($article['date_publication']) ?>
-                                            <?php if ($article['nb_commentaires'] > 0): ?>
-                                                <i class="far fa-comments" style="margin-left: 10px; margin-right: 5px;"></i>
-                                                <?= $article['nb_commentaires'] ?>
-                                            <?php endif; ?>
+                                        </div>
+                                        <div class="article-stats">
+                                        <i class="far fa-eye" style="margin-right: 5px;"></i>
+                                            <?= $article['nb_vues'] ?>
+                                        </div>
+                                        <div class="article-comments">
+                                            <i class="far fa-comment" style="margin-right: 5px;"></i>
+                                            <?= $article['nb_commentaires'] ?>
                                         </div>
                                     </div>
                                 </div>
@@ -939,108 +900,81 @@ function format_date($date) {
                     <?php if ($total_pages > 1): ?>
                         <div class="pagination">
                             <?php if ($page > 1): ?>
-                                <a href="?page=<?= $page - 1 ?><?= $categorie_id ? '&categorie=' . $categorie_id : '' ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>">
+                                <a href="doctor-articles.php?id=<?= $medecin_id ?>&page=<?= $page - 1 ?><?= $categorie_id ? '&categorie=' . $categorie_id : '' ?>">
                                     <i class="fas fa-chevron-left"></i>
                                 </a>
                             <?php endif; ?>
                             
-                            <?php
-                            $start_page = max(1, $page - 2);
-                            $end_page = min($total_pages, $page + 2);
-                            
-                            if ($start_page > 1) {
-                                echo '<a href="?page=1' . ($categorie_id ? '&categorie=' . $categorie_id : '') . (!empty($search) ? '&search=' . urlencode($search) : '') . '">1</a>';
-                                if ($start_page > 2) {
-                                    echo '<span>...</span>';
-                                }
-                            }
-                            
-                            for ($i = $start_page; $i <= $end_page; $i++) {
-                                if ($i == $page) {
-                                    echo '<span class="current">' . $i . '</span>';
-                                } else {
-                                    echo '<a href="?page=' . $i . ($categorie_id ? '&categorie=' . $categorie_id : '') . (!empty($search) ? '&search=' . urlencode($search) : '') . '">' . $i . '</a>';
-                                }
-                            }
-                            
-                            if ($end_page < $total_pages) {
-                                if ($end_page < $total_pages - 1) {
-                                    echo '<span>...</span>';
-                                }
-                                echo '<a href="?page=' . $total_pages . ($categorie_id ? '&categorie=' . $categorie_id : '') . (!empty($search) ? '&search=' . urlencode($search) : '') . '">' . $total_pages . '</a>';
-                            }
-                            ?>
+                            <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                                <?php if ($i == $page): ?>
+                                    <span class="current"><?= $i ?></span>
+                                <?php else: ?>
+                                    <a href="doctor-articles.php?id=<?= $medecin_id ?>&page=<?= $i ?><?= $categorie_id ? '&categorie=' . $categorie_id : '' ?>"><?= $i ?></a>
+                                <?php endif; ?>
+                            <?php endfor; ?>
                             
                             <?php if ($page < $total_pages): ?>
-                                <a href="?page=<?= $page + 1 ?><?= $categorie_id ? '&categorie=' . $categorie_id : '' ?><?= !empty($search) ? '&search=' . urlencode($search) : '' ?>">
+                                <a href="doctor-articles.php?id=<?= $medecin_id ?>&page=<?= $page + 1 ?><?= $categorie_id ? '&categorie=' . $categorie_id : '' ?>">
                                     <i class="fas fa-chevron-right"></i>
                                 </a>
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>
+                    
                 <?php else: ?>
                     <div class="empty-state">
-                        <i class="fas fa-search"></i>
-                        <h3>Aucun article trouvé</h3>
-                        <p>Nous n'avons pas trouvé d'articles correspondant à votre recherche. Essayez avec d'autres termes ou consultez une autre catégorie.</p>
+                        <i class="fas fa-newspaper"></i>
+                        <h3>Aucun article disponible</h3>
+                        <p>Le Dr. <?= htmlspecialchars($medecin['prenom']) ?> <?= htmlspecialchars($medecin['nom']) ?> n'a pas encore publié d'articles.</p>
                     </div>
                 <?php endif; ?>
             </section>
         </div>
         
         <div class="sidebar">
-            <!-- Médecins populaires -->
+            <!-- Widget des catégories -->
             <div class="sidebar-widget">
-                <h3 class="widget-title">Médecins contributeurs</h3>
-                <ul class="popular-doctors">
-                    <?php foreach ($popular_doctors as $doctor): ?>
-                        <li class="doctor-item">
-                            <a href="doctor.php?id=<?= $doctor['id'] ?>" class="doctor-link">
-                                <div class="doctor-avatar">
-                                    <?= substr(htmlspecialchars($doctor['prenom']), 0, 1) . substr(htmlspecialchars($doctor['nom']), 0, 1) ?>
-                                </div>
-                                <div class="doctor-details">
-                                    <div class="doctor-name">Dr. <?= htmlspecialchars($doctor['prenom']) ?> <?= htmlspecialchars($doctor['nom']) ?></div>
-                                    <div class="doctor-specialty"><?= htmlspecialchars($doctor['specialite']) ?></div>
-                                    <div class="doctor-stats">
-                                        <i class="fas fa-file-medical" style="margin-right: 5px;"></i>
-                                        <?= $doctor['nb_articles'] ?> article<?= $doctor['nb_articles'] > 1 ? 's' : '' ?>
+                <h3 class="widget-title">Catégories</h3>
+                <?php if (count($categories) > 0): ?>
+                    <div class="categories-list">
+                        <?php foreach ($categories as $categorie): ?>
+                            <a href="Magazine.php?categorie=<?= $categorie['id'] ?>" class="category-link">
+                                <?= htmlspecialchars($categorie['nom']) ?>
+                                <span class="category-count"><?= $categorie['nb_articles'] ?></span>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <p>Aucune catégorie disponible.</p>
+                <?php endif; ?>
+            </div>
+            
+            <!-- Widget des médecins populaires -->
+            <div class="sidebar-widget">
+                <h3 class="widget-title">Médecins populaires</h3>
+                <?php if (count($popular_doctors) > 0): ?>
+                    <ul class="popular-doctors">
+                        <?php foreach ($popular_doctors as $doctor): ?>
+                            <li class="doctor-item">
+                                <a href="doctor-articles.php?id=<?= $doctor['id'] ?>" class="doctor-link">
+                                    <div class="doctor-avatar">
+                                        <?= substr(htmlspecialchars($doctor['prenom']), 0, 1) . substr(htmlspecialchars($doctor['nom']), 0, 1) ?>
                                     </div>
-                                </div>
-                            </a>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
-            
-            <!-- Articles récents -->
-            <div class="sidebar-widget">
-                <h3 class="widget-title">Articles récents</h3>
-                <ul class="recent-articles">
-                    <?php foreach ($recent_articles as $recent): ?>
-                        <li class="recent-article-item">
-                            <a href="doctor-articles.php?slug=<?= htmlspecialchars($recent['slug']) ?>" class="recent-article-link">
-                                <?= htmlspecialchars($recent['titre']) ?>
-                            </a>
-                            <div class="recent-article-date">
-                                <i class="far fa-calendar-alt" style="margin-right: 5px;"></i>
-                                <?= format_date($recent['date_publication']) ?>
-                            </div>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            </div>
-            
-            <!-- Newsletter -->
-            <div class="sidebar-widget">
-                <h3 class="widget-title">Newsletter</h3>
-                <p style="margin-bottom: 1rem;">Recevez les derniers articles et conseils directement dans votre boîte mail.</p>
-                <form action="newsletter-subscribe.php" method="POST" style="display: flex; flex-direction: column; gap: 1rem;">
-                    <input type="email" name="email" placeholder="Votre adresse email" required style="padding: 0.8rem; border: 1px solid #ddd; border-radius: 5px;">
-                    <button type="submit" style="background-color: var(--accent-color1); color: var(--text-dark); border: none; padding: 0.8rem; border-radius: 5px; font-weight: 600; cursor: pointer;">
-                        S'abonner
-                    </button>
-                </form>
+                                    <div class="doctor-details">
+                                        <div class="doctor-name">Dr. <?= htmlspecialchars($doctor['prenom']) ?> <?= htmlspecialchars($doctor['nom']) ?></div>
+                                        <div class="doctor-specialty"><?= htmlspecialchars($doctor['specialite']) ?></div>
+                                        <div class="doctor-stats-small">
+                                            <i class="fas fa-newspaper" style="margin-right: 5px;"></i>
+                                            <?= $doctor['nb_articles'] ?> articles
+                                        </div>
+                                    </div>
+                                </a>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php else: ?>
+                    <p>Aucun médecin populaire disponible.</p>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -1049,29 +983,8 @@ function format_date($date) {
     <footer>
         <div class="footer-content">
             <div class="footer-column">
-                <h3>À propos</h3>
-                <ul class="footer-links">
-                    <li><a href="about.php">Qui sommes-nous</a></li>
-                    <li><a href="mission.php">Notre mission</a></li>
-                    <li><a href="team.php">Notre équipe</a></li>
-                    <li><a href="blog.php">Blog</a></li>
-                </ul>
-            </div>
-            <div class="footer-column">
-                <h3>Services</h3>
-                <ul class="footer-links">
-                    <li><a href="docFilterMedcin.php">Trouver un médecin</a></li>
-                    <li><a href="userPharmacie.php">Pharmacies</a></li>
-                    <li><a href="medicaments.php">Médicaments</a></li>
-                    <li><a href="Questions.php">Questions & Réponses</a></li>
-                    <li><a href="Magazine.php">Magazine Santé</a></li>
-                </ul>
-            </div>
-            <div class="footer-column">
-                <h3>Contact</h3>
-                <p><i class="fas fa-map-marker-alt contact-icon"></i> 123 Rue de la Santé, Ville</p>
-                <p><i class="fas fa-phone contact-icon"></i> +33 1 23 45 67 89</p>
-                <p><i class="fas fa-envelope contact-icon"></i> contact@medistatview.com</p>
+                <h3>À propos de MediStatView</h3>
+                <p>MediStatView est une plateforme qui met en relation les patients avec des professionnels de santé qualifiés, offrant des services médicaux innovants et des informations fiables.</p>
                 <div class="social-links">
                     <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
                     <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
@@ -1079,9 +992,36 @@ function format_date($date) {
                     <a href="#" class="social-icon"><i class="fab fa-linkedin-in"></i></a>
                 </div>
             </div>
+            <div class="footer-column">
+                <h3>Liens utiles</h3>
+                <ul class="footer-links">
+                    <li><a href="index.php">Accueil</a></li>
+                    <li><a href="docFilterMedcin.php">Médecins</a></li>
+                    <li><a href="userPharmacie.php">Pharmacies</a></li>
+                    <li><a href="medicaments.php">Médicaments</a></li>
+                    <li><a href="Questions.php">Questions</a></li>
+                    <li><a href="Magazine.php">Magazine</a></li>
+                </ul>
+            </div>
+            <div class="footer-column">
+                <h3>Services</h3>
+                <ul class="footer-links">
+                    <li><a href="#">Consultation en ligne</a></li>
+                    <li><a href="#">Prise de rendez-vous</a></li>
+                    <li><a href="#">Conseil pharmaceutique</a></li>
+                    <li><a href="#">Information médicale</a></li>
+                    <li><a href="#">Téléconsultation</a></li>
+                </ul>
+            </div>
+            <div class="footer-column footer-contact">
+                <h3>Contact</h3>
+                <p><i class="fas fa-map-marker-alt contact-icon"></i> 123 Rue de la Santé, 75000 Paris</p>
+                <p><i class="fas fa-phone-alt contact-icon"></i> +33 1 23 45 67 89</p>
+                <p><i class="fas fa-envelope contact-icon"></i> contact@medistatview.com</p>
+            </div>
         </div>
         <div class="copyright">
-            <p>&copy; <?= date('Y') ?> MediStatView. Tous droits réservés.</p>
+            <p>&copy; 2023 MediStatView. Tous droits réservés.</p>
         </div>
     </footer>
 </body>
