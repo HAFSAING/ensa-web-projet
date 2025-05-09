@@ -1023,7 +1023,7 @@ header {
 </head>
 <body>
 
-    <!-- Header avec navigation et icônes -->
+  <!-- Header avec navigation et icônes -->
     <header>
         <div class="container">
             <div class="header-content">
@@ -1046,6 +1046,12 @@ header {
                             <a href="#" class="nav-link">
                                 <i class="fas fa-pills"></i>
                                 <span>Pharmacie</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#" class="nav-link">
+                                <i class="fas fa-capsules"></i>
+                                <span>Médicaments</span>
                             </a>
                         </li>
                         <li class="nav-item">
