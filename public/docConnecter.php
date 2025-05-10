@@ -1,43 +1,45 @@
 <?php
-// Démarrage de la session
 session_start();
-
 // Inclusion du fichier de connexion à la base de données
 require_once __DIR__ . '/../config/database.php';
 
-// Obtenir la connexion via database.php
-$pdo = getDatabaseConnection();
-
 // Initialisation des variables de message d'erreur
-$error_message = "";
+$error_message = isset($_SESSION['login_error']) ? $_SESSION['login_error'] : "";
+unset($_SESSION['login_error']);
 
-// Vérification si le formulaire a été soumis
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Récupération des données du formulaire
-    $username = htmlspecialchars($_POST['username']); // Sécurise les données sans utiliser une fonction non définie
-    $password = $_POST['password'];
-
-    // Vérification des champs
-    if (empty($username) || empty($password)) {
-        $error_message = "Tous les champs sont obligatoires.";
-    } else {
-        // Vérification si l'identifiant est un email ou un numéro INPE
-        $is_email = filter_var($username, FILTER_VALIDATE_EMAIL);
-
-        try {
+try {
+    // Obtenir la connexion via database.php
+    $pdo = getDatabaseConnection();
+    
+    // Vérification si le formulaire a été soumis
+    if ($_SERVER["REQUEST_METHOD"] == "POST") {
+        // Récupération des données du formulaire
+        $username = htmlspecialchars(trim($_POST['username'])); 
+        $password = $_POST['password'];
+    
+        // Vérification des champs
+        if (empty($username) || empty($password)) {
+            $error_message = "Tous les champs sont obligatoires.";
+        } else {
+            // Vérification si l'identifiant est un email ou un numéro INPE
+            $is_email = filter_var($username, FILTER_VALIDATE_EMAIL);
+    
             // Préparation de la requête SQL en fonction du type d'identifiant
             if ($is_email) {
-                $stmt = $pdo->prepare("SELECT id, nom, prenom, email, password, statut FROM medecins WHERE email = ?");
+                $stmt = $pdo->prepare("SELECT id, nom, prenom, email, password, statut FROM medecins WHERE email = :username");
             } else {
-                $stmt = $pdo->prepare("SELECT id, nom, prenom, email, password, statut FROM medecins WHERE num_inpe = ?");
+                $stmt = $pdo->prepare("SELECT id, nom, prenom, email, password, statut FROM medecins WHERE num_inpe = :username");
             }
-
-            // Exécution de la requête avec le paramètre bindé
-            $stmt->execute([$username]);
-
+            
+            // Liaison des paramètres de manière sécurisée
+            $stmt->bindParam(':username', $username, PDO::PARAM_STR);
+            
+            // Exécution de la requête
+            $stmt->execute();
+    
             // Récupération du médecin
-            $medecin = $stmt->fetch();
-
+            $medecin = $stmt->fetch(PDO::FETCH_ASSOC);
+    
             // Vérification si le médecin existe et si le mot de passe est correct
             if ($medecin && password_verify($password, $medecin['password'])) {
                 // Vérification du statut du compte
@@ -47,37 +49,40 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $error_message = "Votre compte a été suspendu. Veuillez contacter le support médical.";
                 } else {
                     // Mise à jour de la date de dernière connexion
-                    $update_stmt = $pdo->prepare("UPDATE medecins SET last_login_at = NOW() WHERE id = ?");
-                    $update_stmt->execute([$medecin['id']]);
-
+                    $update_stmt = $pdo->prepare("UPDATE medecins SET last_login_at = NOW() WHERE id = :id");
+                    $update_stmt->bindParam(':id', $medecin['id'], PDO::PARAM_INT);
+                    $update_stmt->execute();
+    
                     // Enregistrement du log de connexion
-                    $log_stmt = $pdo->prepare("INSERT INTO logs_acces (utilisateur_id, type_utilisateur, action, ip_address, user_agent) VALUES (?, 'medecin', 'connexion', ?, ?)");
-                    $log_stmt->execute([
-                        $medecin['id'],
-                        $_SERVER['REMOTE_ADDR'],
-                        $_SERVER['HTTP_USER_AGENT']
-                    ]);
-
+                    $log_stmt = $pdo->prepare("INSERT INTO logs_acces (utilisateur_id, type_utilisateur, action, ip_address, user_agent) 
+                                            VALUES (:user_id, 'medecin', 'connexion', :ip, :agent)");
+                    $log_stmt->bindParam(':user_id', $medecin['id'], PDO::PARAM_INT);
+                    $log_stmt->bindParam(':ip', $_SERVER['REMOTE_ADDR'], PDO::PARAM_STR);
+                    $log_stmt->bindParam(':agent', $_SERVER['HTTP_USER_AGENT'], PDO::PARAM_STR);
+                    $log_stmt->execute();
+    
                     // Stockage des informations de session
                     $_SESSION['medecin_id'] = $medecin['id'];
                     $_SESSION['medecin_nom'] = $medecin['nom'];
                     $_SESSION['medecin_prenom'] = $medecin['prenom'];
                     $_SESSION['medecin_email'] = $medecin['email'];
                     $_SESSION['user_type'] = 'medecin';
-
+    
                     // Si "Se souvenir de moi" est coché, création d'un cookie
                     if (isset($_POST['remember']) && $_POST['remember'] == 'on') {
                         // Génération d'un token aléatoire
                         $token = bin2hex(random_bytes(32));
-
+    
                         // Stockage du token dans la base de données
-                        $token_stmt = $pdo->prepare("UPDATE medecins SET remember_token = ? WHERE id = ?");
-                        $token_stmt->execute([$token, $medecin['id']]);
-
+                        $token_stmt = $pdo->prepare("UPDATE medecins SET remember_token = :token WHERE id = :id");
+                        $token_stmt->bindParam(':token', $token, PDO::PARAM_STR);
+                        $token_stmt->bindParam(':id', $medecin['id'], PDO::PARAM_INT);
+                        $token_stmt->execute();
+    
                         // Création du cookie (expire dans 30 jours)
                         setcookie('remember_medecin', $token, time() + (86400 * 30), "/", "", true, true);
                     }
-
+    
                     // Redirection vers le tableau de bord
                     header("Location: docDashboard.php");
                     exit();
@@ -85,19 +90,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             } else {
                 $error_message = "Identifiant ou mot de passe incorrect.";
             }
-        } catch (PDOException $e) {
-            // En production, utilisez un système de journalisation
-            error_log("Erreur de connexion médecin: " . $e->getMessage());
-            $error_message = "Une erreur s'est produite lors de la tentative de connexion.";
+        }
+    
+        // Si une erreur est survenue, on stocke le message dans la session
+        if (!empty($error_message)) {
+            $_SESSION['login_error'] = $error_message;
+            header("Location: docConnecter.php");
+            exit();
         }
     }
-
-    // Si une erreur est survenue, on stocke le message dans la session
-    if (!empty($error_message)) {
-        $_SESSION['login_error'] = $error_message;
-        header("Location: index.php"); // Redirection vers la page de connexion
-        exit();
-    }
+} catch (PDOException $e) {
+    // En production, utilisez un système de journalisation
+    error_log("Erreur de connexion à la base de données: " . $e->getMessage());
+    $_SESSION['login_error'] = "Une erreur technique est survenue. Veuillez réessayer plus tard.";
+    header("Location: docConnecter.php");
+    exit();
 }
 ?>
 
@@ -328,6 +335,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             border-bottom: 1px solid #216b4e;
         }
 
+        .error-message {
+            color: #d9534f;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
         .footer {
             background-color: #5a9e81;
             color: white;
@@ -451,10 +468,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             .sign-in-btn {
                 padding: 12px;
             }
-            
-            .register-btn {
-                padding: 10px 20px;
-            }
         }
     </style>
 </head>
@@ -495,12 +508,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 <?php if (!empty($error_message)): ?>
                 <div class="error-message">
-                    <?php echo $error_message; ?>
+                    <?php echo htmlspecialchars($error_message); ?>
                 </div>
                 <?php endif; ?>
                 <form id="loginForm" action="docConnecter.php" method="post">
                     <div class="form-group">
-                        <label for="username">Identifiant professionnel</label>
+                        <label for="username">Identifiant professionnel (Email ou N°INPE)</label>
                         <input type="text" id="username" name="username" required>
                     </div>
 

@@ -1,4 +1,5 @@
 <?php
+// Configuration de la base de données
 define('DB_HOST', 'localhost'); 
 define('DB_NAME', 'medistatview'); 
 define('DB_USER', 'root');
@@ -24,10 +25,8 @@ function getDatabaseConnection() {
         return $pdo;
     } catch (PDOException $e) {
         // En cas d'erreur de connexion, afficher un message d'erreur
-        die("Erreur de connexion à la base de données : " . $e->getMessage());
+        error_log("Erreur de connexion à la base de données : " . $e->getMessage());
+        die("Erreur de connexion à la base de données. Veuillez réessayer plus tard.");
     }
 }
-
-// Retourner la connexion PDO
-return getDatabaseConnection();
 ?>
