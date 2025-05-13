@@ -1,3 +1,80 @@
+<?php
+// Démarrage de la session
+session_start();
+
+// Inclure la connexion à la base de données
+require_once __DIR__ . '/../config/database.php';
+
+// Obtenir la connexion PDO
+$pdo = getDatabaseConnection();
+
+// Vérifier si l'utilisateur est connecté
+if (!isset($_SESSION['patient_id'])) {
+    header("Location: userConnecter.php");
+    exit();
+}
+
+// Récupérer les données du patient connecté
+$patient_id = $_SESSION['patient_id'];
+$stmt = $pdo->prepare("SELECT nom, prenom, email FROM patients WHERE id = ?");
+$stmt->execute([$patient_id]);
+$patient = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$patient) {
+    // Rediriger si le patient n'est pas trouvé
+    header("Location: userConnecter.php");
+    exit();
+}
+
+// Récupérer les prochains rendez-vous
+$stmt_rendezvous = $pdo->prepare("
+    SELECT r.date_heure, m.nom, m.prenom 
+    FROM rendez_vous r 
+    JOIN medecins m ON r.medecin_id = m.id 
+    WHERE r.patient_id = ? AND r.date_heure >= CURDATE() 
+    ORDER BY r.date_heure ASC 
+    LIMIT 2
+");
+$stmt_rendezvous->execute([$patient_id]);
+$rendezvous = $stmt_rendezvous->fetchAll(PDO::FETCH_ASSOC);
+
+// Récupérer les médicaments actifs
+$stmt_medicaments = $pdo->prepare("
+    SELECT medicament, posologie, duree 
+    FROM prescriptions p 
+    JOIN consultations c ON p.consultation_id = c.id 
+    JOIN patients pa ON c.patient_id = pa.id 
+    WHERE pa.id = ? AND c.statut = 'terminee' 
+    LIMIT 2
+");
+$stmt_medicaments->execute([$patient_id]);
+$medicaments = $stmt_medicaments->fetchAll(PDO::FETCH_ASSOC);
+
+// Données statiques pour les indicateurs de santé (à remplacer par des données réelles si disponibles)
+$indicateurs = [
+    ['label' => 'Fréquence cardiaque', 'value' => '72 bpm', 'icon' => 'fas fa-heartbeat', 'trend' => 'trend-stable'],
+    ['label' => 'Tension artérielle', 'value' => '128/82', 'icon' => 'fas fa-stethoscope pressure-icon', 'trend' => 'trend-up'],
+    ['label' => 'Poids', 'value' => '68.4 kg', 'icon' => 'fas fa-weight weight-icon', 'trend' => 'trend-down'],
+    ['label' => 'Cholestérol', 'value' => '5.1 mmol/L', 'icon' => 'fas fa-flask chol-icon', 'trend' => 'trend-up']
+];
+
+// Récupérer les messages récents (exemple avec des données statiques pour l'instant)
+$messages = [
+    [
+        'from' => 'Dr. Thomas Laurent',
+        'date' => 'Aujourd\'hui, 09:45',
+        'content' => 'Bonjour Mme Benoit, suite à notre dernier rendez-vous, je vous transmets les résultats de vos analyses sanguines. Le taux de cholestérol est légèrement élevé, nous en discuterons lors de notre prochain rendez-vous...',
+        'new' => true
+    ],
+    [
+        'from' => 'Dr. Sophie Martin',
+        'date' => 'Hier, 14:20',
+        'content' => 'Bonjour Marie, je vous confirme notre rendez-vous du 18 mai pour le suivi de votre thyroïde. N\'oubliez pas d\'apporter vos dernières analyses...',
+        'new' => false
+    ]
+];
+?>
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -824,98 +901,57 @@
     </style>
 </head>
 <body>
-    <!-- Header avec navigation -->
     <header>
         <div class="container">
             <div class="header-content">
-                <svg width="180" height="50" viewBox="0 0 180 50">
-                    <rect x="10" y="15" width="20" height="20" fill="#77c4a0" />
-                    <polygon points="30,15 40,25 30,35" fill="#9fdec0" />
-                    <text x="50" y="25" fill="#ffffff" font-size="18" font-weight="bold">MediStatView</text>
-                    <text x="50" y="40" fill="#9fdec0" font-size="12">SERVICES</text>
-                </svg>
-
+                <div class="logo">
+                    <svg width="180" height="50" viewBox="0 0 180 50">
+                        <rect x="10" y="15" width="20" height="20" fill="#76b5c5" />
+                        <polygon points="30,15 40,25 30,35" fill="#a7c5d1" />
+                        <text x="50" y="25" fill="#ffffff" font-size="18" font-weight="bold">MediStatView</text>
+                        <text x="50" y="40" fill="#a7c5d1" font-size="12">SERVICES</text>
+                    </svg>
+                </div>
                 <nav class="main-nav">
                     <ul class="nav-list">
-                        <li class="nav-item">
-                            <a href="patientDashboard.php" class="nav-link active">
-                                <i class="fas fa-home"></i>
-                                <span>Tableau de bord</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="patientDossier.php" class="nav-link">
-                                <i class="fas fa-folder-open"></i>
-                                <span>Mon dossier</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="patientRendezVous.php" class="nav-link">
-                                <i class="fas fa-calendar-alt"></i>
-                                <span>Rendez-vous</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="patientMessages.php" class="nav-link">
-                                <i class="fas fa-envelope"></i>
-                                <span>Messages</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="patientStatistiques.php" class="nav-link">
-                                <i class="fas fa-chart-line"></i>
-                                <span>Statistiques</span>
-                            </a>
-                        </li>
+                        <li class="nav-item"><a href="userDashboard.php" class="nav-link active"><i class="fas fa-home"></i> Tableau de bord</a></li>
+                        <li class="nav-item"><a href="userDossier.php" class="nav-link"><i class="fas fa-folder-open"></i> Mon dossier</a></li>
+                        <li class="nav-item"><a href="userRendezVous.php" class="nav-link"><i class="fas fa-calendar-alt"></i> Rendez-vous</a></li>
+                        <li class="nav-item"><a href="userMessage.php" class="nav-link"><i class="fas fa-envelope"></i> Messages</a></li>
+                        <li class="nav-item"><a href="userStatistique.php" class="nav-link"><i class="fas fa-chart-bar"></i> Statistiques</a></li>
                     </ul>
                 </nav>
-
                 <div class="user-menu">
-                    <button class="user-btn" onclick="toggleDropdown()">
-                        <div class="user-avatar">MB</div>
+                    <button class="user-btn">
+                        <div class="user-avatar">
+                            <?= substr($patient['prenom'], 0, 1) . substr($patient['nom'], 0, 1) ?>
+                        </div>
                         <div class="user-info">
-                            <span class="user-name">Marie Benoit</span>
+                            <span class="user-name"><?= htmlspecialchars($patient['prenom'] . ' ' . $patient['nom']) ?></span>
                             <span class="user-role">Patient</span>
                         </div>
-                        <i class="fas fa-chevron-down"></i>
                     </button>
-                    <div class="dropdown-menu" id="userDropdown">
-                        <a href="userProfile.php" class="dropdown-item">
-                            <i class="fas fa-user"></i>
-                            <span>Mon profil</span>
-                        </a>
-                        <a href="userParametres.php" class="dropdown-item">
-                            <i class="fas fa-cog"></i>
-                            <span>Paramètres</span>
-                        </a>
+                    <div class="dropdown-menu">
+                        <a href="#" class="dropdown-item"><i class="fas fa-user"></i> Mon profil</a>
+                        <a href="#" class="dropdown-item"><i class="fas fa-cog"></i> Paramètres</a>
                         <div class="dropdown-divider"></div>
-                        <a href="Deconnection.php" class="dropdown-item">
-                            <i class="fas fa-sign-out-alt"></i>
-                            <span>Déconnexion</span>
-                        </a>
+                        <a href="#" class="dropdown-item"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
                     </div>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- Dashboard content -->
     <div class="dashboard">
         <div class="container">
             <div class="page-header">
                 <div>
                     <h1 class="page-title">Tableau de bord</h1>
-                    <p class="dashboard-greeting">Bonjour Marie, <span class="dashboard-date">le 8 mai 2025</span></p>
+                    <p class="dashboard-greeting">Bonjour <span class="dashboard-date"><?= htmlspecialchars($patient['prenom']) ?>, le <?= date('d M Y') ?></span></p>
                 </div>
                 <div class="action-buttons">
-                    <a href="patientRendezVous.php" class="btn btn-primary">
-                        <i class="fas fa-plus"></i>
-                        <span>Nouveau rendez-vous</span>
-                    </a>
-                    <a href="patientDossier.php" class="btn btn-outline">
-                        <i class="fas fa-file-medical"></i>
-                        <span>Mon dossier médical</span>
-                    </a>
+                    <a href="#" class="btn btn-primary">Nouveau rendez-vous</a>
+                    <a href="#" class="btn btn-outline">Mon dossier médical</a>
                 </div>
             </div>
 
@@ -924,69 +960,33 @@
                     <div class="card-header">
                         <h2 class="card-title">Prochains rendez-vous</h2>
                         <div class="card-icon appointments-icon">
-                            <i class="fas fa-calendar-check"></i>
+                            <i class="fas fa-calendar-alt"></i>
                         </div>
                     </div>
                     <div class="card-content">
-                        <div class="appointment-item">
-                            <div class="appointment-date">
-                                <span class="appointment-day">12</span>
-                                <span class="appointment-month">mai</span>
-                            </div>
-                            <div class="appointment-info">
-                                <div class="appointment-name">Dr. Thomas Laurent</div>
-                                <div class="appointment-details">
-                                    <span class="appointment-time">
-                                        <i class="far fa-clock"></i>
-                                        10:30
-                                    </span>
-                                    <span class="appointment-location">
-                                        <i class="fas fa-map-marker-alt"></i>
-                                        Cabinet médical
-                                    </span>
+                        <?php foreach ($rendezvous as $r): ?>
+                            <div class="appointment-item">
+                                <div class="appointment-date">
+                                    <span class="appointment-day"><?= date('d', strtotime($r['date_heure'])) ?></span>
+                                    <span class="appointment-month"><?= date('M', strtotime($r['date_heure'])) ?></span>
+                                </div>
+                                <div class="appointment-info">
+                                    <div class="appointment-name"><?= htmlspecialchars($r['prenom'] . ' ' . $r['nom']) ?></div>
+                                    <div class="appointment-details">
+                                        <div class="appointment-time"><i class="far fa-clock"></i> <?= date('H:i', strtotime($r['date_heure'])) ?></div>
+                                        <div class="appointment-location"><i class="fas fa-map-marker-alt"></i> Cabinet médical</div>
+                                    </div>
+                                </div>
+                                <div class="appointment-actions">
+                                    <a href="#" class="btn btn-sm btn-outline">Modifier</a>
                                 </div>
                             </div>
-                            <div class="appointment-actions">
-                                <button class="btn btn-sm btn-outline">
-                                    <i class="fas fa-pen"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="appointment-item">
-                            <div class="appointment-date">
-                                <span class="appointment-day">18</span>
-                                <span class="appointment-month">mai</span>
-                            </div>
-                            <div class="appointment-info">
-                                <div class="appointment-name">Dr. Sophie Martin</div>
-                                <div class="appointment-details">
-                                    <span class="appointment-time">
-                                        <i class="far fa-clock"></i>
-                                        14:00
-                                    </span>
-                                    <span class="appointment-location">
-                                        <i class="fas fa-map-marker-alt"></i>
-                                        Clinique Saint-Pierre
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="appointment-actions">
-                                <button class="btn btn-sm btn-outline">
-                                    <i class="fas fa-pen"></i>
-                                </button>
-                            </div>
-                        </div>
+                        <?php endforeach; ?>
                     </div>
                     <div class="card-footer">
-                        <a href="patientRendezVous.php">
-                            Voir tous les rendez-vous
-                            <i class="fas fa-arrow-right"></i>
-                        </a>
+                        <a href="#">Voir tous les rendez-vous</a>
                         <div class="metrics">
-                            <span class="metric">
-                                <i class="fas fa-calendar"></i>
-                                <span class="metric-value">2</span> à venir
-                            </span>
+                            <span class="metric"><i class="fas fa-calendar-check"></i> <span class="metric-value">2 à venir</span></span>
                         </div>
                     </div>
                 </div>
@@ -994,43 +994,28 @@
                 <div class="dash-card">
                     <div class="card-header">
                         <h2 class="card-title">Mes médicaments</h2>
-                        <div class="card-icon
                         <div class="card-icon meds-icon">
                             <i class="fas fa-pills"></i>
                         </div>
                     </div>
                     <div class="card-content">
-                        <div class="med-item">
-                            <div class="med-icon">
-                                <i class="fas fa-capsules"></i>
+                        <?php foreach ($medicaments as $m): ?>
+                            <div class="med-item">
+                                <div class="med-icon">
+                                    <i class="fas fa-capsules"></i>
+                                </div>
+                                <div class="med-info">
+                                    <div class="med-name"><?= htmlspecialchars($m['medicament']) ?></div>
+                                    <div class="med-details"><?= htmlspecialchars($m['posologie']) ?></div>
+                                    <div class="med-timing"><?= htmlspecialchars($m['duree']) ?></div>
+                                </div>
                             </div>
-                            <div class="med-info">
-                                <div class="med-name">Atorvastatine 20mg</div>
-                                <div class="med-details">1 comprimé le soir</div>
-                            </div>
-                            <div class="med-timing">Tous les jours</div>
-                        </div>
-                        <div class="med-item">
-                            <div class="med-icon">
-                                <i class="fas fa-tablets"></i>
-                            </div>
-                            <div class="med-info">
-                                <div class="med-name">Lévothyrox 75µg</div>
-                                <div class="med-details">1 comprimé le matin à jeun</div>
-                            </div>
-                            <div class="med-timing">Tous les jours</div>
-                        </div>
+                        <?php endforeach; ?>
                     </div>
                     <div class="card-footer">
-                        <a href="patientMedicaments.php">
-                            Voir tous les médicaments
-                            <i class="fas fa-arrow-right"></i>
-                        </a>
+                        <a href="#">Voir tous les médicaments</a>
                         <div class="metrics">
-                            <span class="metric">
-                                <i class="fas fa-prescription-bottle-alt"></i>
-                                <span class="metric-value">4</span> actifs
-                            </span>
+                            <span class="metric"><i class="fas fa-prescription"></i> <span class="metric-value">4 actifs</span></span>
                         </div>
                     </div>
                 </div>
@@ -1043,68 +1028,25 @@
                         </div>
                     </div>
                     <div class="card-content">
-                        <div class="stat-row">
-                            <div class="stat-label">
-                                <div class="stat-icon">
-                                    <i class="fas fa-heartbeat"></i>
+                        <?php foreach ($indicateurs as $i): ?>
+                            <div class="stat-row">
+                                <div class="stat-label">
+                                    <div class="stat-icon <?= isset($i['icon']) ? str_replace('fas fa-', '', $i['icon']) : '' ?>">
+                                        <i class="<?= $i['icon'] ?>"></i>
+                                    </div>
+                                    <?= htmlspecialchars($i['label']) ?>
                                 </div>
-                                <span>Fréquence cardiaque</span>
-                            </div>
-                            <div class="stat-value">
-                                72 bpm
-                                <span class="stat-trend trend-stable">
-                                    <i class="fas fa-minus"></i>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="stat-row">
-                            <div class="stat-label">
-                                <div class="stat-icon pressure-icon">
-                                    <i class="fas fa-tachometer-alt"></i>
+                                <div class="stat-value">
+                                    <?= htmlspecialchars($i['value']) ?>
+                                    <span class="stat-trend <?= $i['trend'] ?>">
+                                        <i class="fas fa-arrow-up"></i>
+                                    </span>
                                 </div>
-                                <span>Tension artérielle</span>
                             </div>
-                            <div class="stat-value">
-                                128/82
-                                <span class="stat-trend trend-down">
-                                    <i class="fas fa-arrow-down"></i>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="stat-row">
-                            <div class="stat-label">
-                                <div class="stat-icon weight-icon">
-                                    <i class="fas fa-weight"></i>
-                                </div>
-                                <span>Poids</span>
-                            </div>
-                            <div class="stat-value">
-                                68.4 kg
-                                <span class="stat-trend trend-stable">
-                                    <i class="fas fa-minus"></i>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="stat-row">
-                            <div class="stat-label">
-                                <div class="stat-icon chol-icon">
-                                    <i class="fas fa-vial"></i>
-                                </div>
-                                <span>Cholestérol</span>
-                            </div>
-                            <div class="stat-value">
-                                5.1 mmol/L
-                                <span class="stat-trend trend-up">
-                                    <i class="fas fa-arrow-up"></i>
-                                </span>
-                            </div>
-                        </div>
+                        <?php endforeach; ?>
                     </div>
                     <div class="card-footer">
-                        <a href="patientStatistiques.php">
-                            Voir toutes les statistiques
-                            <i class="fas fa-arrow-right"></i>
-                        </a>
+                        <a href="#">Voir toutes les statistiques</a>
                     </div>
                 </div>
             </div>
@@ -1112,102 +1054,52 @@
             <div class="messages-section">
                 <div class="messages-header">
                     <h2 class="messages-title">Messages récents</h2>
-                    <a href="patientMessages.php" class="btn btn-outline">
-                        <i class="fas fa-envelope"></i>
-                        <span>Boîte de réception</span>
-                    </a>
+                    <a href="#" class="btn btn-outline">Boîte de réception</a>
                 </div>
                 <div class="message-list">
-                    <div class="message-item">
-                        <div class="message-sender">
-                            <div class="sender-avatar">TL</div>
-                        </div>
-                        <div class="message-content">
-                            <div class="message-header">
-                                <div class="sender-name">
-                                    Dr. Thomas Laurent
-                                    <span class="message-badge">Nouveau</span>
+                    <?php foreach ($messages as $m): ?>
+                        <div class="message-item">
+                            <div class="message-sender">
+                                <div class="sender-avatar"><?= substr($m['from'], 0, 2) ?></div>
+                            </div>
+                            <div class="message-content">
+                                <div class="message-header">
+                                    <div>
+                                        <span class="sender-name"><?= htmlspecialchars($m['from']) ?></span>
+                                        <?php if ($m['new']): ?>
+                                            <span class="message-badge">Nouveau</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <span class="message-time"><?= htmlspecialchars($m['date']) ?></span>
                                 </div>
-                                <div class="message-time">Aujourd'hui, 09:45</div>
-                            </div>
-                            <div class="message-preview">
-                                Bonjour Mme Benoit, suite à notre dernier rendez-vous, je vous transmets les résultats de vos analyses sanguines. Le taux de cholestérol est légèrement élevé, nous en discuterons lors de notre prochain rendez-vous...
-                            </div>
-                            <div class="message-actions">
-                                <a href="patientMessagesDetails.php?id=1" class="btn btn-sm btn-outline">
-                                    Lire
-                                </a>
-                                <button class="btn btn-sm btn-outline">
-                                    Répondre
-                                </button>
+                                <div class="message-preview"><?= htmlspecialchars($m['content']) ?></div>
+                                <div class="message-actions">
+                                    <a href="#" class="btn btn-sm btn-outline">Lire</a>
+                                    <a href="#" class="btn btn-sm btn-outline">Répondre</a>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="message-item">
-                        <div class="message-sender">
-                            <div class="sender-avatar">SM</div>
-                        </div>
-                        <div class="message-content">
-                            <div class="message-header">
-                                <div class="sender-name">Dr. Sophie Martin</div>
-                                <div class="message-time">Hier, 14:20</div>
-                            </div>
-                            <div class="message-preview">
-                                Bonjour Marie, je vous confirme notre rendez-vous du 18 mai pour le suivi de votre thyroïde. N'oubliez pas d'apporter vos dernières analyses...
-                            </div>
-                            <div class="message-actions">
-                                <a href="patientMessagesDetails.php?id=2" class="btn btn-sm btn-outline">
-                                    Lire
-                                </a>
-                                <button class="btn btn-sm btn-outline">
-                                    Répondre
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    <?php endforeach; ?>
                 </div>
                 <div class="messages-footer">
-                    <a href="patientMessages.php" class="btn btn-outline">
-                        Voir tous les messages
-                    </a>
+                    <a href="userMessage.php" class="btn btn-outline">Voir tous les messages</a>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Footer -->
     <footer>
         <div class="footer-content">
-            <div class="copyright">
-                © 2025 MediStatView Services. Tous droits réservés.
-            </div>
+            <span class="copyright">© 2025 MediStatView Services. Tous droits réservés.</span>
             <div class="footer-links">
-                <a href="aPropos.php" class="footer-link">À propos</a>
-                <a href="confidentialite.php" class="footer-link">Confidentialité</a>
-                <a href="conditions.php" class="footer-link">Conditions d'utilisation</a>
-                <a href="contact.php" class="footer-link">Contact</a>
-                <a href="aide.php" class="footer-link">Aide</a>
+                <a href="#" class="footer-link">À propos</a>
+                <a href="#" class="footer-link">Confidentialité</a>
+                <a href="usertermes&privacy.php" class="footer-link">Conditions d'utilisation</a>
+                <a href="#" class="footer-link">Contact</a>
+                <a href="#" class="footer-link">Aide</a>
             </div>
         </div>
-    </footer>
-
-    <!-- JavaScript -->
-    <script>
-        function toggleDropdown() {
-            document.getElementById('userDropdown').classList.toggle('active');
-        }
-        
-        // Fermer le menu déroulant lorsqu'on clique ailleurs sur la page
-        window.onclick = function(event) {
-            if (!event.target.matches('.user-btn') && !event.target.matches('.user-btn *')) {
-                var dropdown = document.getElementById('userDropdown');
-                if (dropdown.classList.contains('active')) {
-                    dropdown.classList.remove('active');
-                }
-            }
-        }
-    </script>
-    
+    </footer>    
     <!-- Font Awesome -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
 </body>

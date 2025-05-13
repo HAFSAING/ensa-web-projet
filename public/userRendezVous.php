@@ -1,9 +1,88 @@
+<?php
+session_start();
+
+// Inclure la connexion à la base de données
+require_once __DIR__ . '/../config/database.php';
+
+// Obtenir la connexion PDO
+$pdo = getDatabaseConnection();
+
+// Vérifier si l'utilisateur est connecté
+if (!isset($_SESSION['patient_id'])) {
+    header("Location: userConnecter.php");
+    exit();
+}
+
+// Récupérer les données du patient connecté
+$patient_id = $_SESSION['patient_id'];
+$stmt = $pdo->prepare("SELECT nom, prenom FROM patients WHERE id = ?");
+$stmt->execute([$patient_id]);
+$patient = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$patient) {
+    header("Location: userConnecter.php");
+    exit();
+}
+
+// Gestion des filtres
+$medecin = $_GET['medecin'] ?? '';
+$specialite = $_GET['specialite'] ?? '';
+$periode = $_GET['periode'] ?? '';
+$date = $_GET['date'] ?? '';
+
+$whereClauses = ["r.patient_id = ?"];
+$params = [$patient_id];
+
+if ($medecin) {
+    $whereClauses[] = "CONCAT(m.prenom, ' ', m.nom) = ?";
+    $params[] = $medecin;
+}
+if ($specialite) {
+    $whereClauses[] = "s.nom = ?";
+    $params[] = $specialite;
+}
+if ($periode === 'a_venir') {
+    $whereClauses[] = "r.date_heure >= CURDATE()";
+} elseif ($periode === 'passes') {
+    $whereClauses[] = "r.date_heure < CURDATE()";
+}
+if ($date) {
+    $whereClauses[] = "DATE(r.date_heure) = ?";
+    $params[] = $date;
+}
+
+$query = "
+    SELECT r.id, r.date_heure, m.nom AS medecin_nom, m.prenom AS medecin_prenom, s.nom AS specialite, r.motif, r.statut, r.notes
+    FROM rendez_vous r
+    JOIN medecins m ON r.medecin_id = m.id
+    JOIN specialites s ON m.specialite_id = s.id
+    WHERE " . implode(" AND ", $whereClauses) . "
+    ORDER BY r.date_heure ASC
+";
+$stmt_rendezvous = $pdo->prepare($query);
+$stmt_rendezvous->execute($params);
+$rendezvous = $stmt_rendezvous->fetchAll(PDO::FETCH_ASSOC);
+
+// Récupérer les spécialités pour le formulaire
+$stmt_specialites = $pdo->query("SELECT nom FROM specialites ORDER BY nom ASC");
+$specialites = $stmt_specialites->fetchAll(PDO::FETCH_COLUMN);
+
+// Récupérer les médecins pour le formulaire
+$stmt_medecins = $pdo->query("
+    SELECT CONCAT(m.prenom, ' ', m.nom) AS nom_complet
+    FROM medecins m
+    WHERE m.statut = 'actif'
+    ORDER BY nom_complet ASC
+");
+$medecins = $stmt_medecins->fetchAll(PDO::FETCH_COLUMN);
+?>
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mes Rendez-vous - MediStatView</title>
+    <title>MediStatView</title>
     <style>
         :root {
             --primary-color: #1d566b;
@@ -976,556 +1055,292 @@
     </style>
 </head>
 <body>
-    <!-- Header avec navigation -->
     <header>
         <div class="container">
             <div class="header-content">
-                <svg width="180" height="50" viewBox="0 0 180 50">
-                    <rect x="10" y="15" width="20" height="20" fill="#77c4a0" />
-                    <polygon points="30,15 40,25 30,35" fill="#9fdec0" />
-                    <text x="50" y="25" fill="#ffffff" font-size="18" font-weight="bold">MediStatView</text>
-                    <text x="50" y="40" fill="#9fdec0" font-size="12">SERVICES</text>
-                </svg>
-
+                <div class="logo">
+                    <svg width="180" height="50" viewBox="0 0 180 50">
+                        <rect x="10" y="15" width="20" height="20" fill="#76b5c5" />
+                        <polygon points="30,15 40,25 30,35" fill="#a7c5d1" />
+                        <text x="50" y="25" fill="#ffffff" font-size="18" font-weight="bold">MediStatView</text>
+                        <text x="50" y="40" fill="#a7c5d1" font-size="12">SERVICES</text>
+                    </svg>
+                </div>
                 <nav class="main-nav">
                     <ul class="nav-list">
-                        <li class="nav-item">
-                            <a href="patientDashboard.php" class="nav-link">
-                                <i class="fas fa-home"></i>
-                                <span>Tableau de bord</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="patientDossier.php" class="nav-link">
-                                <i class="fas fa-folder-open"></i>
-                                <span>Mon dossier</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="patientRendezVous.php" class="nav-link active">
-                                <i class="fas fa-calendar-alt"></i>
-                                <span>Rendez-vous</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="patientMessages.php" class="nav-link">
-                                <i class="fas fa-envelope"></i>
-                                <span>Messages</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="patientStatistiques.php" class="nav-link">
-                                <i class="fas fa-chart-line"></i>
-                                <span>Statistiques</span>
-                            </a>
-                        </li>
+                        <li class="nav-item"><a href="userDashboard.php" class="nav-link"><i class="fas fa-home"></i> Tableau de bord</a></li>
+                        <li class="nav-item"><a href="userDossier.php" class="nav-link"><i class="fas fa-folder-open"></i> Mon dossier</a></li>
+                        <li class="nav-item"><a href="userRendezVous.php" class="nav-link active"><i class="fas fa-calendar-alt"></i> Rendez-vous</a></li>
+                        <li class="nav-item"><a href="userMessage.php" class="nav-link"><i class="fas fa-envelope"></i> Messages</a></li>
+                        <li class="nav-item"><a href="userStatistique.php" class="nav-link"><i class="fas fa-chart-bar"></i> Statistiques</a></li>
                     </ul>
                 </nav>
-
                 <div class="user-menu">
-                    <button class="user-btn" onclick="toggleDropdown()">
-                        <div class="user-avatar">MB</div>
+                    <button class="user-btn">
+                        <div class="user-avatar">
+                            <?= substr($patient['prenom'] ?? '', 0, 1) . substr($patient['nom'] ?? '', 0, 1) ?>
+                        </div>
                         <div class="user-info">
-                            <span class="user-name">Marie Benoit</span>
+                            <span class="user-name"><?= htmlspecialchars($patient['prenom'] ?? '') . ' ' . htmlspecialchars($patient['nom'] ?? '') ?></span>
                             <span class="user-role">Patient</span>
                         </div>
-                        <i class="fas fa-chevron-down"></i>
                     </button>
-                    <div class="dropdown-menu" id="userDropdown">
-                        <a href="patientProfil.php" class="dropdown-item">
-                            <i class="fas fa-user"></i>
-                            <span>Mon profil</span>
-                        </a>
-                        <a href="patientParametres.php" class="dropdown-item">
-                            <i class="fas fa-cog"></i>
-                            <span>Paramètres</span>
-                        </a>
+                    <div class="dropdown-menu">
+                        <a href="#" class="dropdown-item"><i class="fas fa-user"></i> Mon profil</a>
+                        <a href="#" class="dropdown-item"><i class="fas fa-cog"></i> Paramètres</a>
                         <div class="dropdown-divider"></div>
-                        <a href="logout.php" class="dropdown-item">
-                            <i class="fas fa-sign-out-alt"></i>
-                            <span>Déconnexion</span>
-                        </a>
+                        <a href="userConnecter.php?logout=true" class="dropdown-item"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
                     </div>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- Contenu principal -->
-    <div class="main-content container">
+    <div class="main-content">
         <div class="page-header">
-            <h1 class="page-title">Mes Rendez-vous</h1>
+            <h2 class="page-title">Mes Rendez-vous</h2>
             <div class="action-buttons">
-                <button class="btn btn-primary" id="newAppointmentBtn">
-                    <i class="fas fa-plus"></i>
-                    <span>Nouveau rendez-vous</span>
-                </button>
-                <button class="btn btn-outline">
-                    <i class="fas fa-sync-alt"></i>
-                    <span>Actualiser</span>
-                </button>
+                <a href="#newAppointmentModal" class="btn btn-primary">Nouveau rendez-vous</a>
+                <a href="?refresh=true" class="btn btn-outline">Actualiser</a>
             </div>
         </div>
 
-        <!-- Section de filtres -->
         <div class="filter-section">
-            <h2 class="filter-title">Filtrer les rendez-vous</h2>
-            <form class="filter-form">
+            <h3 class="filter-title">Filtrer les rendez-vous</h3>
+            <form method="get" class="filter-form">
                 <div class="form-group">
-                    <label class="form-label">Médecin</label>
-                    <select class="form-control">
+                    <label for="medecin" class="form-label">Médecin</label>
+                    <select id="medecin" name="medecin" class="form-control">
                         <option value="">Tous les médecins</option>
-                        <option value="1">Dr. Thomas Leroy</option>
-                        <option value="2">Dr. Sophie Martin</option>
-                        <option value="3">Dr. Philippe Dubois</option>
+                        <?php foreach ($medecins as $medecin_option): ?>
+                            <option value="<?= htmlspecialchars($medecin_option) ?>" <?= $medecin === $medecin_option ? 'selected' : '' ?>>
+                                Dr. <?= htmlspecialchars($medecin_option) ?>
+                            </option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Spécialité</label>
-                    <select class="form-control">
+                    <label for="specialite" class="form-label">Spécialité</label>
+                    <select id="specialite" name="specialite" class="form-control">
                         <option value="">Toutes les spécialités</option>
-                        <option value="1">Médecine générale</option>
-                        <option value="2">Cardiologie</option>
-                        <option value="3">Dermatologie</option>
-                        <option value="4">Pédiatrie</option>
+                        <?php foreach ($specialites as $specialite_option): ?>
+                            <option value="<?= htmlspecialchars($specialite_option) ?>" <?= $specialite === $specialite_option ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($specialite_option) ?>
+                            </option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Période</label>
-                    <select class="form-control">
-                        <option value="all">Tous</option>
-                        <option value="upcoming">À venir</option>
-                        <option value="past">Passés</option>
+                    <label for="periode" class="form-label">Période</label>
+                    <select id="periode" name="periode" class="form-control">
+                        <option value="">Tous</option>
+                        <option value="a_venir" <?= $periode === 'a_venir' ? 'selected' : '' ?>>À venir</option>
+                        <option value="passes" <?= $periode === 'passes' ? 'selected' : '' ?>>Passés</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Date</label>
-                    <input type="date" class="form-control">
+                    <label for="date" class="form-label">Date</label>
+                    <input type="date" id="date" name="date" class="form-control" value="<?= $date ?>">
                 </div>
                 <div class="filter-buttons">
-                    <button type="submit" class="btn btn-primary btn-sm">
-                        <i class="fas fa-filter"></i>
-                        <span>Filtrer</span>
-                    </button>
-                    <button type="reset" class="btn btn-outline btn-sm">
-                        <i class="fas fa-times"></i>
-                        <span>Réinitialiser</span>
-                    </button>
+                    <button type="submit" class="btn btn-primary">Filtrer</button>
+                    <a href="userRendezVous.php" class="btn btn-outline">Réinitialiser</a>
                 </div>
             </form>
         </div>
 
-        <!-- Onglets de vue -->
-        <div class="tabs">
-            <div class="tab active" data-view="list">
-                <i class="fas fa-list"></i>
-                <span>Liste</span>
-                <span class="tab-badge">5</span>
-            </div>
-            <div class="tab" data-view="calendar">
-                <i class="fas fa-calendar-alt"></i>
-                <span>Calendrier</span>
+        <div class="view-toggle">
+            <button class="view-btn active" data-view="list">Liste</button>
+            <button class="view-btn" data-view="calendar">Calendrier</button>
+        </div>
+
+        <div class="appointments-list" id="listView">
+            <?php if ($rendezvous): ?>
+                <?php foreach ($rendezvous as $rdv): ?>
+                    <div class="appointment-item">
+                        <div class="appointment-date">
+                            <span class="appointment-day"><?= date('d', strtotime($rdv['date_heure'])) ?></span>
+                            <span class="appointment-month"><?= date('M', strtotime($rdv['date_heure'])) ?></span>
+                        </div>
+                        <div class="appointment-info">
+                            <div class="appointment-meta">
+                                <span class="appointment-time"><i class="far fa-clock"></i> <?= date('H:i', strtotime($rdv['date_heure'])) ?></span>
+                                <span class="appointment-type"><?= $rdv['statut'] === 'annule' ? 'Annulé' : ($rdv['statut'] === 'termine' ? 'Terminé' : 'À venir') ?></span>
+                            </div>
+                            <div class="appointment-doctor"><?= htmlspecialchars($rdv['medecin_prenom'] . ' ' . $rdv['medecin_nom'] . ' - ' . $rdv['specialite']) ?></div>
+                            <div class="appointment-details">
+                                <div class="appointment-location"><i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($rdv['notes'] ?? 'Lieu non spécifié') ?></div>
+                                <div class="appointment-note"><i class="fas fa-sticky-note"></i> <?= htmlspecialchars($rdv['motif']) ?></div>
+                            </div>
+                        </div>
+                        <div class="appointment-actions">
+                            <?php if ($rdv['statut'] !== 'termine' && $rdv['statut'] !== 'annule'): ?>
+                                <button class="btn btn-sm btn-primary">Modifier</button>
+                                <button class="btn btn-sm btn-danger">Annuler</button>
+                            <?php else: ?>
+                                <button class="btn btn-sm btn-primary">Rapport</button>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="no-data">
+                    <i class="fas fa-calendar-exclamation no-data-icon"></i>
+                    <h3 class="no-data-title">Aucun rendez-vous trouvé</h3>
+                    <p class="no-data-message">Vous n'avez pas de rendez-vous correspondant à vos critères de recherche. Veuillez ajuster vos filtres ou créer un nouveau rendez-vous.</p>
+                    <a href="#newAppointmentModal" class="btn btn-primary">Nouveau rendez-vous</a>
+                </div>
+            <?php endif; ?>
+            <div class="pagination">
+                <button class="page-item">1</button>
+                <button class="page-item">2</button>
+                <button class="page-item">3</button>
             </div>
         </div>
 
-        <!-- Vue liste -->
-        <div class="tab-content" id="listView">
-            <div class="appointments-list">
-                <!-- Rendez-vous 1 -->
-                <div class="appointment-item">
-                    <div class="appointment-date">
-                        <div class="appointment-day">15</div>
-                        <div class="appointment-month">MAI</div>
-                    </div>
-                    <div class="appointment-info">
-                        <span class="appointment-status status-confirmed">Confirmé</span>
-                        <div class="appointment-meta">
-                            <div class="appointment-time">
-                                <i class="far fa-clock"></i>
-                                <span>14:30 - 15:00</span>
-                            </div>
-                            <span class="appointment-type">Consultation</span>
-                        </div>
-                        <div class="appointment-doctor">Dr. Thomas Leroy - Médecine générale</div>
-                        <div class="appointment-details">
-                            <div class="appointment-location">
-                                <i class="fas fa-map-marker-alt"></i>
-                                <span>Centre Médical Saint-Michel, Bureau 303</span>
-                            </div>
-                            <div class="appointment-note">
-                                <i class="fas fa-sticky-note"></i>
-                                <span>Suivi traitement hypertension</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="appointment-actions">
-                        <button class="btn btn-outline btn-sm">
-                            <i class="fas fa-pencil-alt"></i>
-                            <span>Modifier</span>
-                        </button>
-                        <button class="btn btn-danger btn-sm">
-                            <i class="fas fa-times"></i>
-                            <span>Annuler</span>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Rendez-vous 2 -->
-                <div class="appointment-item">
-                    <div class="appointment-date">
-                        <div class="appointment-day">20</div>
-                        <div class="appointment-month">MAI</div>
-                    </div>
-                    <div class="appointment-info">
-                        <span class="appointment-status status-pending">En attente</span>
-                        <div class="appointment-meta">
-                            <div class="appointment-time">
-                                <i class="far fa-clock"></i>
-                                <span>10:00 - 11:00</span>
-                            </div>
-                            <span class="appointment-type">Examen</span>
-                        </div>
-                        <div class="appointment-doctor">Dr. Sophie Martin - Cardiologie</div>
-                        <div class="appointment-details">
-                            <div class="appointment-location">
-                                <i class="fas fa-map-marker-alt"></i>
-                                <span>Hôpital Sainte-Marie, Service Cardiologie</span>
-                            </div>
-                            <div class="appointment-note">
-                                <i class="fas fa-sticky-note"></i>
-                                <span>Échographie cardiaque</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="appointment-actions">
-                        <button class="btn btn-outline btn-sm">
-                            <i class="fas fa-pencil-alt"></i>
-                            <span>Modifier</span>
-                        </button>
-                        <button class="btn btn-danger btn-sm">
-                            <i class="fas fa-times"></i>
-                            <span>Annuler</span>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Rendez-vous 3 -->
-                <div class="appointment-item">
-                    <div class="appointment-date">
-                        <div class="appointment-day">28</div>
-                        <div class="appointment-month">MAI</div>
-                    </div>
-                    <div class="appointment-info">
-                        <span class="appointment-status status-confirmed">Confirmé</span>
-                        <div class="appointment-meta">
-                            <div class="appointment-time">
-                                <i class="far fa-clock"></i>
-                                <span>09:15 - 09:45</span>
-                            </div>
-                            <span class="appointment-type">Consultation</span>
-                        </div>
-                        <div class="appointment-doctor">Dr. Philippe Dubois - Dermatologie</div>
-                        <div class="appointment-details">
-                            <div class="appointment-location">
-                                <i class="fas fa-map-marker-alt"></i>
-                                <span>Cabinet Médical Montaigne, 2ème étage</span>
-                            </div>
-                            <div class="appointment-note">
-                                <i class="fas fa-sticky-note"></i>
-                                <span>Suivi après traitement</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="appointment-actions">
-                        <button class="btn btn-outline btn-sm">
-                            <i class="fas fa-pencil-alt"></i>
-                            <span>Modifier</span>
-                        </button>
-                        <button class="btn btn-danger btn-sm">
-                            <i class="fas fa-times"></i>
-                            <span>Annuler</span>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Rendez-vous 4 - Passé -->
-                <div class="appointment-item">
-                    <div class="appointment-date">
-                        <div class="appointment-day">05</div>
-                        <div class="appointment-month">MAI</div>
-                    </div>
-                    <div class="appointment-info">
-                        <span class="appointment-status badge-info">Terminé</span>
-                        <div class="appointment-meta">
-                            <div class="appointment-time">
-                                <i class="far fa-clock"></i>
-                                <span>11:30 - 12:00</span>
-                            </div>
-                            <span class="appointment-type">Consultation</span>
-                        </div>
-                        <div class="appointment-doctor">Dr. Thomas Leroy - Médecine générale</div>
-                        <div class="appointment-details">
-                            <div class="appointment-location">
-                                <i class="fas fa-map-marker-alt"></i>
-                                <span>Centre Médical Saint-Michel, Bureau 303</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="appointment-actions">
-                        <button class="btn btn-outline btn-sm">
-                            <i class="fas fa-file-medical-alt"></i>
-                            <span>Rapport</span>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Rendez-vous 5 - Passé -->
-                <div class="appointment-item">
-                    <div class="appointment-date">
-                        <div class="appointment-day">25</div>
-                        <div class="appointment-month">AVR</div>
-                    </div>
-                    <div class="appointment-info">
-                        <span class="appointment-status badge-info">Terminé</span>
-                        <div class="appointment-meta">
-                            <div class="appointment-time">
-                                <i class="far fa-clock"></i>
-                                <span>15:45 - 16:30</span>
-                            </div>
-                            <span class="appointment-type">Examen</span>
-                        </div>
-                        <div class="appointment-doctor">Dr. Isabelle Klein - Radiologie</div>
-                        <div class="appointment-details">
-                            <div class="appointment-location">
-                                <i class="fas fa-map-marker-alt"></i>
-                                <span>Centre d'Imagerie Médicale Pasteur</span>
-                            </div>
-                            <div class="appointment-note">
-                                <i class="fas fa-sticky-note"></i>
-                                <span>Radiographie de la cheville</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="appointment-actions">
-                        <button class="btn btn-outline btn-sm">
-                            <i class="fas fa-file-medical-alt"></i>
-                            <span>Rapport</span>
-                        </button>
-                    </div>
+        <div class="calendar" id="calendarView" style="display: none;">
+            <div class="calendar-header">
+                <h2 class="calendar-title">Mai 2025</h2>
+                <div class="calendar-nav">
+                    <button class="calendar-nav-btn"><i class="fas fa-chevron-left"></i></button>
+                    <button class="calendar-nav-btn"><i class="fas fa-chevron-right"></i></button>
                 </div>
             </div>
-            
-            <!-- Pagination -->
-            <div class="pagination">
-                <div class="page-item active">1</div>
-                <div class="page-item">2</div>
-                <div class="page-item">3</div>
-                <div class="page-item"><i class="fas fa-chevron-right"></i></div>
-            </div>
-        </div>
-        
-        <!-- Vue calendrier (masquée par défaut) -->
-        <div class="tab-content" id="calendarView" style="display: none;">
-            <div class="calendar">
-                <div class="calendar-header">
-                    <div class="calendar-title">Mai 2025</div>
-                    <div class="calendar-nav">
-                        <button class="calendar-nav-btn"><i class="fas fa-chevron-left"></i></button>
-                        <button class="calendar-nav-btn"><i class="fas fa-chevron-right"></i></button>
-                    </div>
-                </div>
+            <div class="calendar-grid">
                 <div class="calendar-weekdays">
-                    <div class="weekday">Lun</div>
-                    <div class="weekday">Mar</div>
-                    <div class="weekday">Mer</div>
-                    <div class="weekday">Jeu</div>
-                    <div class="weekday">Ven</div>
-                    <div class="weekday">Sam</div>
-                    <div class="weekday">Dim</div>
+                    <span class="weekday">Lun</span>
+                    <span class="weekday">Mar</span>
+                    <span class="weekday">Mer</span>
+                    <span class="weekday">Jeu</span>
+                    <span class="weekday">Ven</span>
+                    <span class="weekday">Sam</span>
+                    <span class="weekday">Dim</span>
                 </div>
                 <div class="calendar-days">
-                    <!-- Première semaine vide ou partielle -->
-                    <div class="calendar-day"><span class="day-number"></span></div>
-                    <div class="calendar-day"><span class="day-number"></span></div>
-                    <div class="calendar-day"><span class="day-number">1</span></div>
-                    <div class="calendar-day"><span class="day-number">2</span></div>
-                    <div class="calendar-day"><span class="day-number">3</span></div>
-                    <div class="calendar-day"><span class="day-number">4</span></div>
-                    <div class="calendar-day"><span class="day-number">5</span>
-                        <div class="day-event">
-                            <div class="day-event-time">11:30</div>
-                            <div class="day-event-title">Dr. Leroy - Consultation</div>
-                        </div>
-                    </div>
-                    
-                    <!-- Deuxième semaine -->
-                    <div class="calendar-day"><span class="day-number">6</span></div>
-                    <div class="calendar-day"><span class="day-number">7</span></div>
-                    <div class="calendar-day"><span class="day-number">8</span></div>
-                    <div class="calendar-day"><span class="day-number">9</span>
-                        <div class="day-today">9</div>
-                    </div>
-                    <div class="calendar-day"><span class="day-number">10</span></div>
-                    <div class="calendar-day"><span class="day-number">11</span></div>
-                    <div class="calendar-day"><span class="day-number">12</span></div>
-                    
-                    <!-- Troisième semaine -->
-                    <div class="calendar-day"><span class="day-number">13</span></div>
-                    <div class="calendar-day"><span class="day-number">14</span></div>
-                    <div class="calendar-day"><span class="day-number">15</span>
-                        <div class="day-event">
-                            <div class="day-event-time">14:30</div>
-                            <div class="day-event-title">Dr. Leroy - Consultation</div>
-                        </div>
-                    </div>
-                    <div class="calendar-day"><span class="day-number">16</span></div>
-                    <div class="calendar-day"><span class="day-number">17</span></div>
-                    <div class="calendar-day"><span class="day-number">18</span></div>
-                    <div class="calendar-day"><span class="day-number">19</span></div>
-                    
-                    <!-- Quatrième semaine -->
-                    <div class="calendar-day"><span class="day-number">20</span>
-                        <div class="day-event">
-                            <div class="day-event-time">10:00</div>
-                            <div class="day-event-title">Dr. Martin - Examen</div>
-                        </div>
-                    </div>
-                    <div class="calendar-day"><span class="day-number">21</span></div>
-                    <div class="calendar-day"><span class="day-number">22</span></div>
-                    <div class="calendar-day"><span class="day-number">23</span></div>
-                    <div class="calendar-day"><span class="day-number">24</span></div>
-                    <div class="calendar-day"><span class="day-number">25</span></div>
-                    <div class="calendar-day"><span class="day-number">26</span></div>
-                    
-                    <!-- Cinquième semaine -->
-                    <div class="calendar-day"><span class="day-number">27</span></div>
-                    <div class="calendar-day"><span class="day-number">28</span>
-                        <div class="day-event">
-                            <div class="day-event-time">09:15</div>
-                            <div class="day-event-title">Dr. Dubois - Consultation</div>
-                        </div>
-                    </div>
-                    <div class="calendar-day"><span class="day-number">29</span></div>
-                    <div class="calendar-day"><span class="day-number">30</span></div>
-                    <div class="calendar-day"><span class="day-number">31</span></div>
-                    <div class="calendar-day"><span class="day-number"></span></div>
-                    <div class="calendar-day"><span class="day-number"></span></div>
+                    <?php
+                    $days = ['', '', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30', '31'];
+                    $currentDate = new DateTime('2025-05-01');
+                    foreach ($days as $day) {
+                        $class = $day == date('d') && $currentDate->format('Y-m') == '2025-05' ? 'day-today' : '';
+                        echo "<div class='calendar-day $class'>";
+                        if ($day) {
+                            echo "<span class='day-number'>$day</span>";
+                            foreach ($rendezvous as $rdv) {
+                                $rdvDay = date('d', strtotime($rdv['date_heure']));
+                                if ($rdvDay == $day) {
+                                    echo "<div class='day-event'>";
+                                    echo "<span class='day-event-time'>" . date('H:i', strtotime($rdv['date_heure'])) . "</span><br>";
+                                    echo "<span class='day-event-title'>" . htmlspecialchars($rdv['medecin_prenom'] . ' - ' . $rdv['motif']) . "</span>";
+                                    echo "</div>";
+                                }
+                            }
+                        }
+                        echo "</div>";
+                        $currentDate->modify('+1 day');
+                    }
+                    ?>
                 </div>
             </div>
         </div>
-        
-        <!-- État sans données (masqué par défaut) -->
-        <div class="no-data" style="display: none;">
-            <div class="no-data-icon">
-                <i class="far fa-calendar-times"></i>
-            </div>
-            <h2 class="no-data-title">Aucun rendez-vous trouvé</h2>
-            <p class="no-data-message">Vous n'avez pas de rendez-vous correspondant à vos critères de recherche. Veuillez ajuster vos filtres ou créer un nouveau rendez-vous.</p>
-            <button class="btn btn-primary">
-                <i class="fas fa-plus"></i>
-                <span>Nouveau rendez-vous</span>
-            </button>
-        </div>
     </div>
 
-    <!-- Modal pour nouveau rendez-vous -->
-    <div class="modal-backdrop" id="appointmentModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2 class="modal-title">Nouveau rendez-vous</h2>
-                <button class="modal-close" id="closeModal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="appointmentForm">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Type de rendez-vous *</label>
-                            <select class="form-control" required>
-                                <option value="">Sélectionnez un type</option>
-                                <option value="consultation">Consultation</option>
-                                <option value="suivi">Suivi</option>
-                                <option value="examen">Examen</option>
-                                <option value="therapie">Thérapie</option>
-                            </select>
+    <div class="modal-backdrop" id="modalBackdrop">
+        <div class="modal" id="newAppointmentModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">Nouveau rendez-vous</h2>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="newAppointmentForm" method="post" action="save_appointment.php">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="appointmentType">Type de rendez-vous *</label>
+                                <select id="appointmentType" name="appointmentType" class="form-control" required>
+                                    <option value="">Sélectionnez un type</option>
+                                    <option value="consultation">Consultation</option>
+                                    <option value="suivi">Suivi</option>
+                                    <option value="examen">Examen</option>
+                                    <option value="therapie">Thérapie</option>
+                                </select>
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Spécialité *</label>
-                            <select class="form-control" id="speciality" required>
-                                <option value="">Sélectionnez une spécialité</option>
-                                <option value="1">Médecine générale</option>
-                                <option value="2">Cardiologie</option>
-                                <option value="3">Dermatologie</option>
-                                <option value="4">Pédiatrie</option>
-                                <option value="5">Radiologie</option>
-                                <option value="6">Psychiatrie</option>
-                            </select>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="specialty">Spécialité *</label>
+                                <select id="specialty" name="specialty" class="form-control" required>
+                                    <option value="">Sélectionnez une spécialité</option>
+                                    <?php foreach ($specialites as $specialite_option): ?>
+                                        <option value="<?= htmlspecialchars($specialite_option) ?>">
+                                            <?= htmlspecialchars($specialite_option) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Médecin *</label>
-                            <select class="form-control" id="doctor" required>
-                                <option value="">Sélectionnez un médecin</option>
-                                <option value="1">Dr. Thomas Leroy</option>
-                                <option value="2">Dr. Sophie Martin</option>
-                                <option value="3">Dr. Philippe Dubois</option>
-                                <option value="4">Dr. Isabelle Klein</option>
-                            </select>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="doctor">Médecin *</label>
+                                <select id="doctor" name="doctor" class="form-control" required>
+                                    <option value="">Sélectionnez un médecin</option>
+                                    <?php foreach ($medecins as $medecin_option): ?>
+                                        <option value="Dr. <?= htmlspecialchars($medecin_option) ?>">
+                                            Dr. <?= htmlspecialchars($medecin_option) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-row-split">
-                        <div class="form-group">
-                            <label class="form-label">Date *</label>
-                            <input type="date" class="form-control" required>
+                        <div class="form-row form-row-split">
+                            <div class="form-group">
+                                <label for="date">Date *</label>
+                                <input type="date" id="date" name="date" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="time">Heure *</label>
+                                <select id="time" name="time" class="form-control" required>
+                                    <option value="">Sélectionnez une heure</option>
+                                    <option value="09:00">09:00</option>
+                                    <option value="09:30">09:30</option>
+                                    <option value="10:00">10:00</option>
+                                    <option value="10:30">10:30</option>
+                                    <option value="11:00">11:00</option>
+                                    <option value="11:30">11:30</option>
+                                    <option value="14:00">14:00</option>
+                                    <option value="14:30">14:30</option>
+                                    <option value="15:00">15:00</option>
+                                    <option value="15:30">15:30</option>
+                                    <option value="16:00">16:00</option>
+                                    <option value="16:30">16:30</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Heure *</label>
-                            <select class="form-control" required>
-                                <option value="">Sélectionnez une heure</option>
-                                <option value="09:00">09:00</option>
-                                <option value="09:30">09:30</option>
-                                <option value="10:00">10:00</option>
-                                <option value="10:30">10:30</option>
-                                <option value="11:00">11:00</option>
-                                <option value="11:30">11:30</option>
-                                <option value="14:00">14:00</option>
-                                <option value="14:30">14:30</option>
-                                <option value="15:00">15:00</option>
-                                <option value="15:30">15:30</option>
-                                <option value="16:00">16:00</option>
-                                <option value="16:30">16:30</option>
-                            </select>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="reason">Motif du rendez-vous</label>
+                                <textarea id="reason" name="reason" class="form-control" rows="3"></textarea>
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Motif du rendez-vous</label>
-                            <textarea class="form-control" placeholder="Décrivez brièvement la raison de votre rendez-vous..."></textarea>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="notes">Informations supplémentaires</label>
+                                <textarea id="notes" name="notes" class="form-control" rows="3"></textarea>
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Informations supplémentaires</label>
-                            <textarea class="form-control" placeholder="Informations importantes à communiquer (allergies, médicaments, symptômes...)"></textarea>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" id="cancelModal">Annuler</button>
-                <button class="btn btn-primary" type="submit" form="appointmentForm">Confirmer</button>
+                        <input type="hidden" name="patient_id" value="<?= $patient_id ?>">
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancelAppointment">Annuler</button>
+                    <button type="submit" form="newAppointmentForm" class="btn btn-primary">Confirmer</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Footer -->
     <footer>
         <div class="footer-content">
-            <div class="copyright">
-                © 2025 MediStatView. Tous droits réservés.
-            </div>
+            <span>© 2025 MediStatView. Tous droits réservés.</span>
             <div class="footer-links">
                 <a href="#" class="footer-link">Confidentialité</a>
                 <a href="#" class="footer-link">Conditions d'utilisation</a>
@@ -1535,119 +1350,58 @@
         </div>
     </footer>
 
-    <!-- Scripts JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
     <script>
-        // Fonction pour basculer le menu déroulant utilisateur
-        function toggleDropdown() {
-            document.getElementById('userDropdown').classList.toggle('active');
-        }
-        
-        // Fermer le menu déroulant si l'utilisateur clique en dehors
-        window.onclick = function(event) {
-            if (!event.target.matches('.user-btn') && !event.target.closest('.user-btn')) {
-                var dropdowns = document.getElementsByClassName('dropdown-menu');
-                for (var i = 0; i < dropdowns.length; i++) {
-                    var openDropdown = dropdowns[i];
-                    if (openDropdown.classList.contains('active')) {
-                        openDropdown.classList.remove('active');
-                    }
-                }
-            }
-        }
-        
-        // Gestion des onglets
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', function() {
-                // Supprimer la classe active de tous les onglets
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                
-                // Ajouter la classe active à l'onglet cliqué
-                this.classList.add('active');
-                
-                // Masquer toutes les vues de contenu
-                document.querySelectorAll('.tab-content').forEach(content => {
-                    content.style.display = 'none';
-                });
-                
-                // Afficher la vue correspondante
-                const view = this.getAttribute('data-view');
-                document.getElementById(view + 'View').style.display = 'block';
+        // Gestion de l'affichage des vues (Liste/Calendrier)
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('listView').style.display = btn.getAttribute('data-view') === 'list' ? 'block' : 'none';
+                document.getElementById('calendarView').style.display = btn.getAttribute('data-view') === 'calendar' ? 'block' : 'none';
             });
         });
-        
+
         // Gestion du modal
-        const modal = document.getElementById('appointmentModal');
-        const newAppointmentBtn = document.getElementById('newAppointmentBtn');
-        const closeModal = document.getElementById('closeModal');
-        const cancelModal = document.getElementById('cancelModal');
-        
-        newAppointmentBtn.addEventListener('click', function() {
-            modal.classList.add('active');
+        const modalBackdrop = document.getElementById('modalBackdrop');
+        const modal = document.getElementById('newAppointmentModal');
+        const closeBtn = document.querySelector('.modal-close');
+        const cancelBtn = document.getElementById('cancelAppointment');
+
+        document.querySelectorAll('.btn-primary[href="#newAppointmentModal"]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                modalBackdrop.classList.add('active');
+            });
         });
-        
-        closeModal.addEventListener('click', function() {
-            modal.classList.remove('active');
+
+        closeBtn.addEventListener('click', () => modalBackdrop.classList.remove('active'));
+        cancelBtn.addEventListener('click', () => modalBackdrop.classList.remove('active'));
+        modalBackdrop.addEventListener('click', (e) => {
+            if (e.target === modalBackdrop) modalBackdrop.classList.remove('active');
         });
-        
-        cancelModal.addEventListener('click', function() {
-            modal.classList.remove('active');
-        });
-        
-        // Fermer le modal si l'utilisateur clique en dehors
-        window.addEventListener('click', function(event) {
-            if (event.target === modal) {
-                modal.classList.remove('active');
-            }
-        });
-        
-        // Logique de filtrage du formulaire de rendez-vous
-        const specialitySelect = document.getElementById('speciality');
-        const doctorSelect = document.getElementById('doctor');
-        
-        specialitySelect.addEventListener('change', function() {
-            const selectedSpeciality = this.value;
-            
-            // Réinitialiser les options du médecin
-            doctorSelect.innerHTML = '<option value="">Sélectionnez un médecin</option>';
-            
-            // Si aucune spécialité n'est sélectionnée, ne rien faire de plus
-            if (!selectedSpeciality) return;
-            
-            // Simuler une recherche de médecins par spécialité
-            // Dans une application réelle, cela serait une requête AJAX
-            const doctors = {
-                '1': [
-                    {id: 1, name: 'Dr. Thomas Leroy'},
-                    {id: 5, name: 'Dr. Michel Bernard'}
-                ],
-                '2': [
-                    {id: 2, name: 'Dr. Sophie Martin'},
-                    {id: 6, name: 'Dr. Antoine Durand'}
-                ],
-                '3': [
-                    {id: 3, name: 'Dr. Philippe Dubois'}
-                ],
-                '4': [
-                    {id: 7, name: 'Dr. Claire Mercier'}
-                ],
-                '5': [
-                    {id: 4, name: 'Dr. Isabelle Klein'}
-                ],
-                '6': [
-                    {id: 8, name: 'Dr. François Lambert'}
-                ]
-            };
-            
-            // Ajouter les médecins correspondants
-            if (doctors[selectedSpeciality]) {
-                doctors[selectedSpeciality].forEach(doctor => {
-                    const option = document.createElement('option');
-                    option.value = doctor.id;
-                    option.textContent = doctor.name;
-                    doctorSelect.appendChild(option);
-                });
-            }
+
+        // Soumission du formulaire
+        document.getElementById('newAppointmentForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            fetch('save_appointment.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Rendez-vous créé avec succès !');
+                    modalBackdrop.classList.remove('active');
+                    location.reload();
+                } else {
+                    alert('Erreur : ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                alert('Une erreur est survenue lors de la création du rendez-vous.');
+            });
         });
     </script>
 </body>
