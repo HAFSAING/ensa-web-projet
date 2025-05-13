@@ -1,7 +1,15 @@
 <?php
 session_start();
+
 // Inclusion du fichier de connexion à la base de données
-require_once __DIR__ . '/../config/database.php';
+try {
+    require_once __DIR__ . '/../config/database.php';
+} catch (Exception $e) {
+    error_log("Erreur d'inclusion du fichier database.php : " . $e->getMessage());
+    $_SESSION['login_error'] = "Erreur serveur : impossible de charger la configuration.";
+    header("Location: docConnecter.php");
+    exit();
+}
 
 // Initialisation des variables de message d'erreur
 $error_message = isset($_SESSION['login_error']) ? $_SESSION['login_error'] : "";
@@ -41,14 +49,13 @@ try {
             $medecin = $stmt->fetch(PDO::FETCH_ASSOC);
     
             // Vérification si le médecin existe et si le mot de passe est correct
-            if ($medecin && password_verify($password, $medecin['password'])) {
-                // Vérification du statut du compte
+            if ($medecin && $password === $medecin['password']) {
                 if ($medecin['statut'] === 'en_attente') {
                     $error_message = "Votre compte est en attente de validation. Veuillez patienter ou contacter le support.";
                 } elseif ($medecin['statut'] === 'suspendu') {
                     $error_message = "Votre compte a été suspendu. Veuillez contacter le support médical.";
                 } else {
-                    // Mise à jour de la date de dernière connexion
+
                     $update_stmt = $pdo->prepare("UPDATE medecins SET last_login_at = NOW() WHERE id = :id");
                     $update_stmt->bindParam(':id', $medecin['id'], PDO::PARAM_INT);
                     $update_stmt->execute();
@@ -99,10 +106,12 @@ try {
             exit();
         }
     }
-} catch (PDOException $e) {
-    // En production, utilisez un système de journalisation
-    error_log("Erreur de connexion à la base de données: " . $e->getMessage());
-    $_SESSION['login_error'] = "Une erreur technique est survenue. Veuillez réessayer plus tard.";
+} catch (Exception $e) {
+    // Journaliser l'erreur avec des détails
+    error_log("Erreur dans docConnecter.php : " . $e->getMessage());
+    
+    // Stocker un message d'erreur pour l'utilisateur
+    $_SESSION['login_error'] = $e->getMessage();
     header("Location: docConnecter.php");
     exit();
 }
@@ -578,4 +587,5 @@ try {
         </div>
     </footer>
 </body>
+
 </html>

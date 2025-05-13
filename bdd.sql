@@ -260,3 +260,26 @@ CREATE TABLE articles_tags (
     FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE,
     FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
 );
+CREATE TABLE administrateurs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nom VARCHAR(100) NOT NULL,
+    prenom VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('super_admin', 'admin') DEFAULT 'admin',
+    last_login_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+CREATE TABLE logs_admin (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    action VARCHAR(100) NOT NULL, -- ex: "modifier_medecin", "approuver_article"
+    description TEXT,
+    entite_type VARCHAR(50),      -- ex: "medecin", "article", "patient"
+    entite_id INT,                -- ID de l'entité concernée
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES administrateurs(id)
+);

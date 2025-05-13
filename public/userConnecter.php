@@ -29,20 +29,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $error_message = "Tous les champs sont obligatoires.";
     } else {
         try {
-            // Vérifier si c'est un email ou un CIN
+            // Vérifier si c'est un email, un CIN ou un username
             $is_email = filter_var($username, FILTER_VALIDATE_EMAIL);
 
             if ($is_email) {
                 $stmt = $pdo->prepare("SELECT id, nom, prenom, email, password, statut FROM patients WHERE email = ?");
             } else {
-                $stmt = $pdo->prepare("SELECT id, nom, prenom, email, password, statut FROM patients WHERE cin = ?");
+                // Vérifier d'abord si c'est un username
+                $stmt = $pdo->prepare("SELECT id, nom, prenom, email, password, statut FROM patients WHERE username = ?");
+                $stmt->execute([$username]);
+                $patient = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                // Si aucun utilisateur n'est trouvé avec ce username, vérifier avec le CIN
+                if (!$patient) {
+                    $stmt = $pdo->prepare("SELECT id, nom, prenom, email, password, statut FROM patients WHERE cin = ?");
+                }
             }
 
             $stmt->execute([$username]);
             $patient = $stmt->fetch(PDO::FETCH_ASSOC);
 
             // Vérifier si le patient existe et si le mot de passe est correct
-            if ($patient && password_verify($password, $patient['password'])) {
+            // Vérifier si le patient existe et si le mot de passe est correct
+            if ($patient && $password === $patient['password'])  {
                 if ($patient['statut'] === 'en_attente') {
                     $error_message = "Votre compte est en attente de validation. Veuillez patienter ou contacter le support.";
                 } elseif ($patient['statut'] === 'suspendu') {

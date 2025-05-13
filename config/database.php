@@ -3,7 +3,7 @@
 define('DB_HOST', 'localhost'); 
 define('DB_NAME', 'medistatview'); 
 define('DB_USER', 'root');
-define('DB_PASS', ''); 
+define('DB_PASS', ''); // Mettez à jour avec le mot de passe correct si nécessaire
 
 // Fonction pour établir la connexion à la base de données
 function getDatabaseConnection() {
@@ -21,12 +21,16 @@ function getDatabaseConnection() {
         // Établir la connexion
         $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
 
-        // Retourner la connexion PDO
         return $pdo;
     } catch (PDOException $e) {
-        // En cas d'erreur de connexion, afficher un message d'erreur
-        error_log("Erreur de connexion à la base de données : " . $e->getMessage());
-        die("Erreur de connexion à la base de données. Veuillez réessayer plus tard.");
+        // Journaliser l'erreur avec des détails pour le débogage
+        error_log("Erreur de connexion à la base de données : " . $e->getMessage() . " | Code: " . $e->getCode());
+        
+        // En environnement de développement, afficher plus de détails (à commenter en production)
+        // echo "Erreur de connexion : " . $e->getMessage(); exit;
+        
+        // Message générique pour l'utilisateur
+        throw new Exception("Impossible de se connecter à la base de données. Veuillez réessayer plus tard.");
     }
 }
-?>
+?>  
