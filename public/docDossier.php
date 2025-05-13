@@ -20,7 +20,7 @@ try {
 // Récupérer les informations du médecin connecté
 $medecin_id = $_SESSION['medecin_id'];
 $stmt_medecin = $pdo->prepare("
-    SELECT m.civilite, m.nom, m.prenom, s.nom AS specialite 
+    SELECT m.civilite, m.nom, m.prenom, m.email AS medecin_email, s.nom AS specialite 
     FROM medecins m 
     LEFT JOIN specialites s ON m.specialite_id = s.id 
     WHERE m.id = ?
@@ -55,10 +55,10 @@ if (!empty($search_query)) {
 
 $where_clause = count($where_conditions) > 0 ? "WHERE " . implode(" AND ", $where_conditions) : "";
 
-// Récupérer les documents médicaux
+// Récupérer les documents médicaux avec l'email du patient
 $stmt_documents = $pdo->prepare("
     SELECT dm.id, dm.patient_id, dm.type_document, dm.titre, dm.chemin_fichier, dm.date_document, dm.notes,
-           p.nom AS patient_nom, p.prenom AS patient_prenom
+           p.nom AS patient_nom, p.prenom AS patient_prenom, p.email AS patient_email
     FROM documents_medicaux dm
     JOIN patients p ON dm.patient_id = p.id
     $where_clause
@@ -78,7 +78,33 @@ $stmt_patients = $pdo->prepare("
 $stmt_patients->execute([$medecin_id]);
 $patients = $stmt_patients->fetchAll(PDO::FETCH_ASSOC);
 
-// Gestion de l'envoi par email
+// Gestion du téléchargement
+if (isset($_GET['download']) && isset($_GET['document_id'])) {
+    $document_id = (int)$_GET['document_id'];
+    $stmt_doc = $pdo->prepare("
+        SELECT chemin_fichier, titre
+        FROM documents_medicaux
+        WHERE id = ? AND medecin_id = ?
+    ");
+    $stmt_doc->execute([$document_id, $medecin_id]);
+    $document = $stmt_doc->fetch(PDO::FETCH_ASSOC);
+
+    if ($document && file_exists($document['chemin_fichier'])) {
+        header('Content-Description: File Transfer');
+        header('Content-Type: application/octet-stream');
+        header('Content-Disposition: attachment; filename="' . basename($document['titre']) . '.' . pathinfo($document['chemin_fichier'], PATHINFO_EXTENSION) . '"');
+        header('Expires: 0');
+        header('Cache-Control: must-revalidate');
+        header('Pragma: public');
+        header('Content-Length: ' . filesize($document['chemin_fichier']));
+        readfile($document['chemin_fichier']);
+        exit;
+    } else {
+        $error_message = "Document non trouvé ou inaccessible.";
+    }
+}
+
+// Gestion de l'envoi par email (manuel)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email']) && isset($_POST['document_id'])) {
     $document_id = (int)$_POST['document_id'];
     $recipient_email = trim($_POST['email']);
@@ -93,13 +119,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email']) && isse
     $document = $stmt_doc->fetch(PDO::FETCH_ASSOC);
 
     if ($document && filter_var($recipient_email, FILTER_VALIDATE_EMAIL)) {
-        // Simuler l'envoi d'email (remplacer par une vraie implémentation avec PHPMailer si nécessaire)
         $subject = "Envoi de document médical: " . $document['titre'];
         $message = "Bonjour,\n\nVeuillez trouver ci-joint le document médical: " . $document['titre'] . ".\n\nCordialement,\nDr. " . $medecin['prenom'] . " " . $medecin['nom'];
-        $headers = "From: " . $medecin['email'];
+        $headers = "From: " . $medecin['medecin_email'];
 
-        // Pour un envoi réel, utiliser PHPMailer avec pièce jointe
-        // Ici, simulation avec mail() pour l'exemple
         if (mail($recipient_email, $subject, $message, $headers)) {
             $success_message = "Document envoyé avec succès à $recipient_email.";
         } else {
@@ -107,6 +130,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email']) && isse
         }
     } else {
         $error_message = "Adresse email invalide ou document non trouvé.";
+    }
+}
+
+// Gestion de l'envoi au patient
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_to_patient']) && isset($_POST['document_id'])) {
+    $document_id = (int)$_POST['document_id'];
+
+    // Vérifier le document et récupérer l'email du patient
+    $stmt_doc = $pdo->prepare("
+        SELECT dm.chemin_fichier, dm.titre, p.email AS patient_email, p.prenom AS patient_prenom, p.nom AS patient_nom
+        FROM documents_medicaux dm
+        JOIN patients p ON dm.patient_id = p.id
+        WHERE dm.id = ? AND dm.medecin_id = ?
+    ");
+    $stmt_doc->execute([$document_id, $medecin_id]);
+    $document = $stmt_doc->fetch(PDO::FETCH_ASSOC);
+
+    if ($document && filter_var($document['patient_email'], FILTER_VALIDATE_EMAIL)) {
+        $recipient_email = $document['patient_email'];
+        $subject = "Votre document médical: " . $document['titre'];
+        $message = "Bonjour " . $document['patient_prenom'] . " " . $document['patient_nom'] . ",\n\nVeuillez trouver ci-joint votre document médical: " . $document['titre'] . ".\n\nCordialement,\nDr. " . $medecin['prenom'] . " " . $medecin['nom'];
+        $headers = "From: " . $medecin['medecin_email'];
+
+        if (mail($document['patient_email'], $subject, $message, $headers)) {
+            $success_message = "Document envoyé avec succès à " . $document['patient_prenom'] . " " . $document['patient_nom'] . " (" . $document['patient_email'] . ").";
+        } else {
+            $error_message = "Échec de l'envoi du document au patient. Veuillez réessayer.";
+        }
+    } else {
+        $error_message = "Email du patient invalide ou document non trouvé.";
     }
 }
 ?>
@@ -351,7 +404,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email']) && isse
         .filter-form {
             display: flex;
             gap: 1rem;
-            flex-wrap: wrap;
+            flex-matrix: wrap;
         }
 
         .filter-form select,
@@ -412,6 +465,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email']) && isse
             font-size: 0.8rem;
             cursor: pointer;
             transition: all 0.3s ease;
+            margin-right: 0.5rem;
         }
 
         .btn-primary {
@@ -431,6 +485,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email']) && isse
 
         .btn-secondary:hover {
             background-color: #e9ecef;
+        }
+
+        .btn-patient {
+            background-color: var(--accent-color1);
+            color: white;
+        }
+
+        .btn-patient:hover {
+            background-color: #6aa88a;
         }
 
         .email-form {
@@ -510,6 +573,162 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email']) && isse
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 1rem;
+            }
+
+            .btn {
+                margin-bottom: 0.5rem;
+            }
+        }
+         /* Footer */
+        footer {
+            background-color: var(--primary-color);
+            color: var(--text-light);
+            padding: 4rem 2rem 2rem;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+        }
+
+        .footer-column h3 {
+            font-size: 1.3rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .footer-column h3::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 40px;
+            height: 3px;
+            background-color: var(--accent-color1);
+        }
+
+        .footer-column p {
+            color: #ccc;
+            margin-bottom: 1.2rem;
+            line-height: 1.6;
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 0.8rem;
+        }
+
+        .footer-links a {
+            color: #ccc;
+            text-decoration: none;
+            transition: color 0.3s ease;
+            display: inline-block;
+        }
+
+        .footer-links a:hover {
+            color: var(--accent-color1);
+            transform: translateX(5px);
+        }
+
+        .footer-contact p {
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .contact-icon {
+            margin-right: 0.8rem;
+            color: var(--accent-color1);
+            display: inline-flex;
+            width: 24px;
+            justify-content: center;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .social-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .social-icon:hover {
+            background-color: var(--accent-color1);
+            transform: translateY(-3px);
+        }
+
+        .google-map {
+            width: 100%;
+            overflow: hidden;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .copyright {
+            text-align: center;
+            padding-top: 2rem;
+            margin-top: 3rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: #ccc;
+        }
+
+        .legal-links {
+            margin-top: 1rem;
+        }
+
+        .legal-links a {
+            color: #ccc;
+            text-decoration: none;
+            transition: color 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .legal-links a:hover {
+            color: var(--accent-color1);
+        }
+
+        /* Responsive design pour le footer */
+        @media (max-width: 768px) {
+            .footer-content {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .footer-column.footer-map {
+                grid-column: span 2;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .footer-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .footer-column.footer-map {
+                grid-column: span 1;
+            }
+            
+            .legal-links {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
             }
         }
     </style>
@@ -614,7 +833,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email']) && isse
                                 <td data-label="Titre"><?= htmlspecialchars($document['titre']) ?></td>
                                 <td data-label="Date"><?= date('d M, Y', strtotime($document['date_document'])) ?></td>
                                 <td data-label="Actions">
-                                    <a href="<?= htmlspecialchars($document['chemin_fichier']) ?>" download class="btn btn-primary"><i class="fas fa-download"></i> Télécharger</a>
+                                    <a href="?download=1&document_id=<?= $document['id'] ?>" class="btn btn-primary"><i class="fas fa-download"></i> Télécharger</a>
+                                    <form method="POST" style="display: inline;">
+                                        <input type="hidden" name="document_id" value="<?= $document['id'] ?>">
+                                        <button type="submit" name="send_to_patient" class="btn btn-patient"><i class="fas fa-user"></i> Envoyer au patient</button>
+                                    </form>
                                     <button class="btn btn-secondary email-toggle" data-id="<?= $document['id'] ?>"><i class="fas fa-envelope"></i> Envoyer</button>
                                     <form class="email-form" id="email-form-<?= $document['id'] ?>" method="POST">
                                         <input type="hidden" name="document_id" value="<?= $document['id'] ?>">
@@ -628,7 +851,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_email']) && isse
                 </tbody>
             </table>
         </div>
+        
     </main>
+     <!-- Footer avec Google Maps et informations de contact -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-column">
+                <h3>MediStatView</h3>
+                <p>Votre plateforme de santé connectée pour un suivi médical optimal en toute sécurité.</p>
+                <div class="social-links">
+                    <a href="#" class="social-icon">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="#" class="social-icon">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="#" class="social-icon">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
+                    <a href="#" class="social-icon">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="footer-column footer-links-column">
+                <h3>Liens Rapides</h3>
+                <ul class="footer-links">
+                    <li><a href="index.php">Accueil</a></li>
+                    <li><a href="#features">Nos Services</a></li>
+                    <li><a href="#access-cards">Espaces Personnalisés</a></li>
+                    <li><a href="#">FAQ</a></li>
+                    <li><a href="#">Actualités Santé</a></li>
+                    <li><a href="#">À Propos</a></li>
+                </ul>
+            </div>
+            
+            <div class="footer-column footer-contact">
+                <h3>Contact</h3>
+                <p><span class="contact-icon">📍</span> 123 Avenue de la Santé, 75001 casa</p>
+                <p><span class="contact-icon">📞</span> +212 5 23 45 67 89</p>
+                <p><span class="contact-icon">✉️</span> contact@gmail.com</p>
+                <p><span class="contact-icon">🕒</span> Lun - Ven: 9h00 - 18h00</p>
+            </div>
+            
+            <div class="footer-column footer-map">
+                <h3>Nous Trouver</h3>
+                <div class="google-map">
+                    <iframe 
+                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2624.142047342751!2d2.3345!3d48.8608!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNDjCsDA5JzUxLjgiTiAywrAyMCcwNi42IkU!5e0!3m2!1sfr!2sfr!4v1651234567890!5m2!1sfr!2sfr" 
+                        width="100%" 
+                        height="200" 
+                        style="border:0; border-radius:8px;" 
+                        allowfullscreen="" 
+                        loading="lazy" 
+                        referrerpolicy="no-referrer-when-downgrade">
+                    </iframe>
+                </div>
+            </div>
+        </div>
+        
+        <div class="copyright">
+            <p>&copy; 2025 MediStatView. Tous droits réservés.</p>
+        </div>
+    </footer>
+
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
     <script>

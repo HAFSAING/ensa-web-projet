@@ -882,6 +882,158 @@ function getHealthIndicator($patientId) {
         .empty-text {
             margin-bottom: 1.5rem;
         }
+         /* Footer */
+        footer {
+            background-color: var(--primary-color);
+            color: var(--text-light);
+            padding: 4rem 2rem 2rem;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+        }
+
+        .footer-column h3 {
+            font-size: 1.3rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        .footer-column h3::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 40px;
+            height: 3px;
+            background-color: var(--accent-color1);
+        }
+
+        .footer-column p {
+            color: #ccc;
+            margin-bottom: 1.2rem;
+            line-height: 1.6;
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 0.8rem;
+        }
+
+        .footer-links a {
+            color: #ccc;
+            text-decoration: none;
+            transition: color 0.3s ease;
+            display: inline-block;
+        }
+
+        .footer-links a:hover {
+            color: var(--accent-color1);
+            transform: translateX(5px);
+        }
+
+        .footer-contact p {
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .contact-icon {
+            margin-right: 0.8rem;
+            color: var(--accent-color1);
+            display: inline-flex;
+            width: 24px;
+            justify-content: center;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .social-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .social-icon:hover {
+            background-color: var(--accent-color1);
+            transform: translateY(-3px);
+        }
+
+        .google-map {
+            width: 100%;
+            overflow: hidden;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .copyright {
+            text-align: center;
+            padding-top: 2rem;
+            margin-top: 3rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: #ccc;
+        }
+
+        .legal-links {
+            margin-top: 1rem;
+        }
+
+        .legal-links a {
+            color: #ccc;
+            text-decoration: none;
+            transition: color 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .legal-links a:hover {
+            color: var(--accent-color1);
+        }
+
+        /* Responsive design pour le footer */
+        @media (max-width: 768px) {
+            .footer-content {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .footer-column.footer-map {
+                grid-column: span 2;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .footer-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .footer-column.footer-map {
+                grid-column: span 1;
+            }
+            
+            .legal-links {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
     </style>
     <!-- Ajouter Font Awesome pour les icônes -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
@@ -1368,6 +1520,69 @@ function getHealthIndicator($patientId) {
             </form>
         </div>
     </div>
+     <!-- Footer avec Google Maps et informations de contact -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-column">
+                <h3>MediStatView</h3>
+                <p>Votre plateforme de santé connectée pour un suivi médical optimal en toute sécurité.</p>
+                <div class="social-links">
+                    <a href="#" class="social-icon">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="#" class="social-icon">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="#" class="social-icon">
+                        <i class="fab fa-linkedin-in"></i>
+                    </a>
+                    <a href="#" class="social-icon">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <div class="footer-column footer-links-column">
+                <h3>Liens Rapides</h3>
+                <ul class="footer-links">
+                    <li><a href="index.php">Accueil</a></li>
+                    <li><a href="#features">Nos Services</a></li>
+                    <li><a href="#access-cards">Espaces Personnalisés</a></li>
+                    <li><a href="#">FAQ</a></li>
+                    <li><a href="#">Actualités Santé</a></li>
+                    <li><a href="#">À Propos</a></li>
+                </ul>
+            </div>
+            
+            <div class="footer-column footer-contact">
+                <h3>Contact</h3>
+                <p><span class="contact-icon">📍</span> 123 Avenue de la Santé, 75001 casa</p>
+                <p><span class="contact-icon">📞</span> +212 5 23 45 67 89</p>
+                <p><span class="contact-icon">✉️</span> contact@gmail.com</p>
+                <p><span class="contact-icon">🕒</span> Lun - Ven: 9h00 - 18h00</p>
+            </div>
+            
+            <div class="footer-column footer-map">
+                <h3>Nous Trouver</h3>
+                <div class="google-map">
+                    <iframe 
+                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2624.142047342751!2d2.3345!3d48.8608!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNDjCsDA5JzUxLjgiTiAywrAyMCcwNi42IkU!5e0!3m2!1sfr!2sfr!4v1651234567890!5m2!1sfr!2sfr" 
+                        width="100%" 
+                        height="200" 
+                        style="border:0; border-radius:8px;" 
+                        allowfullscreen="" 
+                        loading="lazy" 
+                        referrerpolicy="no-referrer-when-downgrade">
+                    </iframe>
+                </div>
+            </div>
+        </div>
+        
+        <div class="copyright">
+            <p>&copy; 2025 MediStatView. Tous droits réservés.</p>
+        </div>
+    </footer>
+
 
     <script>
         // Fonctions pour les modales
