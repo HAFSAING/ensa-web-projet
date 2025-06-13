@@ -586,19 +586,158 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 padding: 12px;
             }
         }
-    </style>
+
+.sidebar-logo {
+    margin-bottom: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    padding: 15px 10px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-logo:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 
+        0 8px 25px rgba(0, 0, 0, 0.2),
+        0 4px 10px rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-logo a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.sidebar-logo svg {
+    max-width: 100%;
+    height: auto;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.sidebar-logo:hover svg {
+    transform: scale(1.05);
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+}
+
+.sidebar-logo::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.6s ease;
+    border-radius: 12px;
+}
+
+.sidebar-logo::after {
+    content: 'Retour à l\'accueil';
+    position: absolute;
+    bottom: -35px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.sidebar-logo:hover::after {
+    opacity: 1;
+    visibility: visible;
+    bottom: -30px;
+}
+
+/* Animation au focus pour l'accessibilité */
+.sidebar-logo a:focus {
+    outline: 3px rgba(255, 255, 255, 0.5);
+    outline-offset: 2px;
+    border-radius: 12px;
+}
+
+/* Effet de clic */
+.sidebar-logo:active {
+    transform: translateY(0) scale(0.98);
+    transition: all 0.1s ease;
+}
+
+/* Ajustements responsive */
+@media (max-width: 768px) {
+    .sidebar-logo {
+        margin-bottom: 20px;
+        padding: 12px 8px;
+    }
+    
+    .sidebar-logo::after {
+        font-size: 11px;
+        padding: 5px 10px;
+    }
+}
+
+@media (max-width: 576px) {
+    .sidebar-logo {
+        padding: 10px 6px;
+    }
+    
+    .sidebar-logo svg {
+        max-width: 90%;
+    }
+    
+    .sidebar-logo::after {
+        font-size: 10px;
+        padding: 4px 8px;
+    }
+}
+
+/* Animation d'entrée pour le logo */
+@keyframes logoFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.sidebar-logo {
+    animation: logoFadeIn 0.8s ease-out 0.2s both;
+}
+</style>
 </head>
 <body>
     <div class="main-wrapper">
         <div class="portal-container">
             <div class="sidebar">
                 <div class="sidebar-logo">
-                    <svg width="180" height="50" viewBox="0 0 180 50">
-                        <rect x="10" y="15" width="20" height="20" fill="#77c4a0" />
-                        <polygon points="30,15 40,25 30,35" fill="#9fdec0" />
-                        <text x="50" y="25" fill="#ffffff" font-size="18" font-weight="bold">MediStatView</text>
-                        <text x="50" y="40" fill="#9fdec0" font-size="12">MEDECINS</text>
-                    </svg>
+                    <a href="index.php" title="Retour à l'accueil principal" aria-label="Retourner à la page d'accueil">
+                        <svg width="180" height="50" viewBox="0 0 180 50">
+                            <rect x="10" y="15" width="20" height="20" fill="#77c4a0" />
+                            <polygon points="30,15 40,25 30,35" fill="#9fdec0" />
+                            <text x="50" y="25" fill="#ffffff" font-size="18" font-weight="bold">MediStatView</text>
+                            <text x="50" y="40" fill="#9fdec0" font-size="12">MEDECINS</text>
+                        </svg>
+                    </a>
                 </div>
             </div>
 
