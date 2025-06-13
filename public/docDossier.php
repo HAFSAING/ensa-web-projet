@@ -916,15 +916,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_to_patient']) &&
         </div>
     </footer>
 
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
     <script>
+        // Gestion du toggle pour les formulaires d'email (déjà présent)
         document.querySelectorAll('.email-toggle').forEach(button => {
             button.addEventListener('click', () => {
                 const docId = button.getAttribute('data-id');
                 const form = document.getElementById(`email-form-${docId}`);
                 form.classList.toggle('active');
             });
+        });
+
+        // Gestion du menu déroulant
+        document.querySelector('.user-btn').addEventListener('click', (event) => {
+            event.stopPropagation();
+            const dropdown = document.querySelector('.dropdown-menu');
+            dropdown.classList.toggle('active');
+        });
+
+        // Fermer le menu déroulant si clic en dehors
+        document.addEventListener('click', (event) => {
+            const userMenu = document.querySelector('.user-menu');
+            const dropdown = document.querySelector('.dropdown-menu');
+            if (!userMenu.contains(event.target)) {
+                dropdown.classList.remove('active');
+            }
         });
     </script>
 </body>

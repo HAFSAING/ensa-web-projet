@@ -851,7 +851,7 @@
     </header>
 
     <div class="main-content">
-        <h1 class="page-title">Base de données médicaments</h1>
+        <h1 class="page-title"> médicaments</h1>
         
         <!-- Search and Filter Section -->
         <section class="search-section">

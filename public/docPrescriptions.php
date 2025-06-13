@@ -948,15 +948,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_to_patient']) &&
     </footer>
 
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
-    <script>
-        document.querySelectorAll('.email-toggle').forEach(button => {
-            button.addEventListener('click', () => {
-                const prescId = button.getAttribute('data-id');
-                const form = document.getElementById(`email-form-${prescId}`);
-                form.classList.toggle('active');
-            });
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
+<script>
+    // Gestion du toggle pour les formulaires d'email (déjà présent)
+    document.querySelectorAll('.email-toggle').forEach(button => {
+        button.addEventListener('click', () => {
+            const prescId = button.getAttribute('data-id');
+            const form = document.getElementById(`email-form-${prescId}`);
+            form.classList.toggle('active');
         });
-    </script>
+    });
+
+    // Gestion du menu déroulant
+    document.querySelector('.user-btn').addEventListener('click', (event) => {
+        event.stopPropagation(); // Empêche la propagation pour éviter la fermeture immédiate
+        const dropdown = document.querySelector('.dropdown-menu');
+        dropdown.classList.toggle('active');
+    });
+
+    // Fermer le menu déroulant si clic en dehors
+    document.addEventListener('click', (event) => {
+        const userMenu = document.querySelector('.user-menu');
+        const dropdown = document.querySelector('.dropdown-menu');
+        if (!userMenu.contains(event.target)) {
+            dropdown.classList.remove('active');
+        }
+    });
+</script>
 </body>
 </html>
