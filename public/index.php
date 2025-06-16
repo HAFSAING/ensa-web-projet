@@ -329,7 +329,6 @@
             flex-wrap: wrap;
         }
         
-        /* Features Section */
         .section {
             padding: 5rem 2rem;
             background-color: white;
@@ -1317,11 +1316,14 @@
                 max-width: 300px;
             }
         }
+        .auth-buttons a {
+            text-decoration: none;
+            color: inherit;
+        }
     </style>
 </head>
 <body>
 
-  <!-- Header avec navigation et icônes -->
     <header>
         <div class="container">
             <div class="header-content">
@@ -1424,12 +1426,10 @@
         </div>
     </section>
 
-<!-- Section d'accès améliorée avec choix d'utilisateur plus intuitif -->
 <section class="access-section" id="access-cards">
     <div class="container">
         <h2 class="section-title">Accédez à votre espace personnel</h2>
-        
-        <!-- Tabs de sélection du type d'utilisateur -->
+
         <div class="user-type-tabs">
             <button class="user-tab active" onclick="switchUserType('patient')">
                 <div class="tab-icon patient-icon">👤</div>
@@ -1441,7 +1441,6 @@
             </button>
         </div>
         
-        <!-- Contenu pour les deux types d'utilisateurs -->
         <div class="auth-container">
             <!-- Partie Patient -->
             <div class="auth-content patient-content active">
@@ -1471,7 +1470,6 @@
                 </div>
             </div>
 
-            <!-- Partie Médecin -->
             <div class="auth-content doctor-content">
                 <div class="auth-info">
                     <h3>Espace Médecin</h3>
@@ -1502,7 +1500,6 @@
     </div>
 </section>
 
-    <!-- Footer avec Google Maps et informations de contact -->
     <footer>
         <div class="footer-content">
             <div class="footer-column">
@@ -1565,7 +1562,6 @@
         </div>
     </footer>
 
-    <!-- Ajouter Font Awesome pour les icônes des réseaux sociaux -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
     <script>
         function switchUserType(type) {
@@ -1574,12 +1570,12 @@
                 tab.classList.remove('active');
             });
             
-            // Désactiver tous les contenus
+          
             document.querySelectorAll('.auth-content').forEach(content => {
                 content.classList.remove('active');
             });
             
-            // Activer l'onglet sélectionné
+  
             if (type === 'patient') {
                 document.querySelector('.user-tab:nth-child(1)').classList.add('active');
                 document.querySelector('.patient-content').classList.add('active');

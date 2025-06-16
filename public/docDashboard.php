@@ -89,7 +89,7 @@ function calculateAge($birthDate) {
     return 'N/A';
 }
 
-// Données simulées pour l'activité mensuelle (à remplacer par des données réelles si nécessaire)
+// Données simulées pour l'activité mensuelle
 $activite_mensuelle = [
     ['mois' => 'Jan', 'consultations' => 20, 'nouveaux_patients' => 5, 'prescriptions' => 15],
     ['mois' => 'Fév', 'consultations' => 25, 'nouveaux_patients' => 8, 'prescriptions' => 18],
@@ -134,7 +134,6 @@ $activite_mensuelle = [
             flex-direction: column;
         }
 
-        /* Header */
         header {
             background-color: var(--primary-color);
             color: var(--text-light);
@@ -159,7 +158,6 @@ $activite_mensuelle = [
             gap: 1rem;
         }
 
-        /* Navigation principale */
         .main-nav {
             flex-grow: 1;
             display: flex;
@@ -229,7 +227,6 @@ $activite_mensuelle = [
             border-radius: 10px;
         }
 
-        /* User Menu */
         .user-menu {
             position: relative;
         }
@@ -321,12 +318,10 @@ $activite_mensuelle = [
             margin: 0.5rem 0;
         }
 
-        /* Main Content */
         main {
             flex: 1;
             padding: 2rem;
         }
-
 
         .tab {
             padding: 0.8rem 1.5rem;
@@ -349,7 +344,6 @@ $activite_mensuelle = [
             border-bottom: 3px solid var(--primary-color);
         }
 
-        /* Overview Section */
         .overview-section {
             margin-bottom: 2rem;
         }
@@ -450,7 +444,6 @@ $activite_mensuelle = [
             color: #666;
         }
 
-        /* Activity Section */
         .activity-section {
             background-color: white;
             border-radius: 12px;
@@ -497,7 +490,6 @@ $activite_mensuelle = [
             background-color: var(--accent-color2);
         }
 
-        /* Appointments Section */
         .appointments-section {
             background-color: white;
             border-radius: 12px;
@@ -626,7 +618,6 @@ $activite_mensuelle = [
             background-color: #e9ecef;
         }
 
-        /* Patients Section */
         .patients-section {
             background-color: white;
             border-radius: 12px;
@@ -694,7 +685,6 @@ $activite_mensuelle = [
             gap: 0.5rem;
         }
 
-        /* Responsive */
         @media (max-width: 992px) {
             .header-content {
                 flex-direction: column;
@@ -800,7 +790,7 @@ $activite_mensuelle = [
                 margin-right: 0;
             }
         }
-         /* Footer */
+
         footer {
             background-color: var(--primary-color);
             color: var(--text-light);
@@ -926,7 +916,6 @@ $activite_mensuelle = [
             color: var(--accent-color1);
         }
 
-        /* Responsive design pour le footer */
         @media (max-width: 768px) {
             .footer-content {
                 grid-template-columns: 1fr 1fr;
@@ -1164,7 +1153,7 @@ $activite_mensuelle = [
             </table>
         </div>
     </main>
-     <!-- Footer avec Google Maps et informations de contact -->
+
     <footer>
         <div class="footer-content">
             <div class="footer-column">
@@ -1227,11 +1216,9 @@ $activite_mensuelle = [
         </div>
     </footer>
 
-
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
     <script>
-        // Script pour le graphique Chart.js (déjà présent)
         const ctx = document.getElementById('activityChart').getContext('2d');
         const activityChart = new Chart(ctx, {
             type: 'line',
@@ -1272,14 +1259,12 @@ $activite_mensuelle = [
             }
         });
 
-        // Gestion du menu déroulant
         document.querySelector('.user-btn').addEventListener('click', (event) => {
             event.stopPropagation();
             const dropdown = document.querySelector('.dropdown-menu');
             dropdown.classList.toggle('active');
         });
 
-        // Fermer le menu déroulant si clic en dehors
         document.addEventListener('click', (event) => {
             const userMenu = document.querySelector('.user-menu');
             const dropdown = document.querySelector('.dropdown-menu');
