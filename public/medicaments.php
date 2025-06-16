@@ -1,3 +1,49 @@
+<?php
+require 'vendor/autoload.php'; // Inclure autoload de Composer pour PhpSpreadsheet
+
+use PhpOffice\PhpSpreadsheet\IOFactory;
+
+function fetchMedicamentsFromExcel($filePath) {
+    try {
+        if (!file_exists($filePath)) {
+            throw new Exception("Le fichier Excel $filePath n'existe pas.");
+        }
+
+        $spreadsheet = IOFactory::load($filePath);
+        $sheet = $spreadsheet->getActiveSheet();
+        $medicaments = [];
+
+        // Parcourir les lignes à partir de la 2e ligne (1ère ligne = en-têtes)
+        foreach ($sheet->getRowIterator(2) as $row) {
+            $cellIterator = $row->getCellIterator();
+            $data = [];
+            foreach ($cellIterator as $cell) {
+                $data[] = $cell->getValue();
+            }
+
+            // Assumer que les colonnes sont dans l'ordre : NOM, FORME, PRESENTATION, PRIX
+            if (count($data) >= 4) {
+                $medicaments[] = [
+                    'id' => count($medicaments) + 1,
+                    'name' => $data[0] ?? 'Non spécifié',
+                    'form' => $data[1] ?? 'Non spécifié',
+                    'presentation' => $data[2] ?? 'Non spécifié',
+                    'price' => floatval(str_replace(',', '.', $data[3] ?? 0)), // Convertir prix en float
+                    'stock' => rand(0, 2) // Simuler le stock
+                ];
+            }
+        }
+
+        return $medicaments;
+    } catch (Exception $e) {
+        return ['error' => $e->getMessage()];
+    }
+}
+
+// Chemin vers le fichier Excel (ajustez selon votre structure de répertoire)
+$filePath = 'medicaments.xlsx';
+$medicaments = fetchMedicamentsFromExcel($filePath);
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -31,7 +77,6 @@
             color: var(--text-dark);
         }
 
-        /* Header styles */
         header {
             background-color: var(--primary-color);
             color: var(--text-light);
@@ -56,7 +101,6 @@
             gap: 1rem;
         }
 
-        /* Navigation principale */
         .main-nav {
             flex-grow: 1;
             display: flex;
@@ -126,7 +170,6 @@
             border-radius: 10px;
         }
 
-        /* Main content area */
         .main-content {
             padding: 2rem 0;
         }
@@ -150,7 +193,6 @@
             border-radius: 2px;
         }
 
-        /* Search and filter section */
         .search-section {
             background-color: white;
             border-radius: 12px;
@@ -205,7 +247,6 @@
             justify-content: flex-end;
         }
 
-        /* Medication cards section */
         .medications-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -347,7 +388,6 @@
             transform: translateY(-2px);
         }
 
-        /* Flag icons for country selection */
         .flag-icon {
             width: 20px;
             height: 15px;
@@ -357,7 +397,6 @@
             background-size: cover;
         }
 
-        /* Loading spinner */
         .loading-container {
             display: flex;
             justify-content: center;
@@ -379,7 +418,6 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* No results message */
         .no-results {
             text-align: center;
             padding: 3rem;
@@ -387,7 +425,6 @@
             color: #666;
         }
 
-        /* Pagination */
         .pagination {
             display: flex;
             justify-content: center;
@@ -416,7 +453,6 @@
             border-color: var(--primary-color);
         }
 
-        /* Footer */
         footer {
             background-color: var(--primary-color);
             color: var(--text-light);
@@ -521,7 +557,6 @@
             color: #ccc;
         }
 
-        /* Modal styles */
         .modal {
             display: none;
             position: fixed;
@@ -793,7 +828,6 @@
     </style>
 </head>
 <body>
-    <!-- Header avec navigation -->
     <header>
         <div class="container">
             <div class="header-content">
@@ -851,7 +885,7 @@
     </header>
 
     <div class="main-content">
-        <h1 class="page-title"> médicaments</h1>
+        <h1 class="page-title">Médicaments</h1>
       
         <section class="search-section">
             <h2 class="search-title">Filtrer par</h2>
@@ -865,7 +899,6 @@
                     <label for="pharmaceutical-form">Forme pharmaceutique</label>
                     <select id="pharmaceutical-form" class="form-control">
                         <option value="">Toutes les formes</option>
-                      
                     </select>
                 </div>
                 
@@ -873,7 +906,6 @@
                     <label for="presentation">Présentation</label>
                     <select id="presentation" class="form-control">
                         <option value="">Toutes les présentations</option>
-                        
                     </select>
                 </div>
                 
@@ -892,8 +924,7 @@
                 </div>
             </form>
         </section>
-        
-        <!-- Results Section -->
+
         <section class="medications-container">
             <div id="loading" class="loading-container">
                 <div class="loading-spinner"></div>
@@ -905,22 +936,18 @@
             </div>
             
             <div class="medications-grid" id="medications-grid">
-                
             </div>
             
             <div class="pagination" id="pagination">
-            
             </div>
         </section>
     </div>
-    
-    <!-- Medication Detail Modal -->
+
     <div class="modal" id="medication-modal">
         <div class="modal-content">
-            <button class="close-modal" id="close-modal">&times;</button>
+            <button class="close-modal" id="close-modal">×</button>
             <h2 class="modal-title" id="modal-title">Détails du médicament</h2>
             <div class="modal-body" id="modal-body">
-                
             </div>
         </div>
     </div>
@@ -983,11 +1010,9 @@
         </div>
         
         <div class="copyright">
-            <p>&copy; 2025 MediStatView. Tous droits réservés.</p>
+            <p>© 2025 MediStatView. Tous droits réservés.</p>
         </div>
     </footer>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -1004,79 +1029,35 @@
             const resetButton = document.getElementById('reset-button');
             const formSelect = document.getElementById('pharmaceutical-form');
             const presentationSelect = document.getElementById('presentation');
-            
             const medicationModal = document.getElementById('medication-modal');
             const closeModal = document.getElementById('close-modal');
             const modalTitle = document.getElementById('modal-title');
             const modalBody = document.getElementById('modal-body');
             
-           
+            // Initialisation des données depuis la variable PHP
+            const initialData = <?php echo json_encode($medicaments); ?>;
+            
             async function loadMedicationData() {
-                try {
-                    const response = await fetch('medicaments_data.xlsx');
-                    const arrayBuffer = await response.arrayBuffer();
-                    const data = new Uint8Array(arrayBuffer);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    
-                    // Récupérer la première feuille
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    
-                    // Convertir en JSON
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-                    const headers = jsonData[0];
-                    const medications = [];
-                    
-                    const uniqueForms = new Set();
-                    const uniquePresentations = new Set();
-                    
-                    for (let i = 1; i < jsonData.length; i++) {
-                        const row = jsonData[i];
-                        if (row.length < 4) continue; 
-                        
-                        const medication = {
-                            id: i,
-                            name: row[0] || 'Non spécifié',
-                            form: row[1] || 'Non spécifié',
-                            presentation: row[2] || 'Non spécifié',
-                            price: parseFloat(row[3]) || 0,
-                            stock: Math.floor(Math.random() * 3) 
-                        };
-                        
-                        medications.push(medication);
-                        
-                        // Ajouter aux ensembles uniques
-                        if (medication.form) uniqueForms.add(medication.form);
-                        if (medication.presentation) uniquePresentations.add(medication.presentation);
-                    }
-                    
-                    fillSelectOptions(formSelect, Array.from(uniqueForms).sort());
-                    fillSelectOptions(presentationSelect, Array.from(uniquePresentations).sort());
-                    
-                    return medications;
-                } catch (error) {
-                    console.error("Erreur lors du chargement des données :", error);
-                    // En cas d'erreur, utiliser des données fictives
-                    return generateMockMedications();
+                if (initialData.error) {
+                    console.error("Erreur lors du chargement des données:", initialData.error);
+                    alert("Erreur lors du chargement des données: " + initialData.error);
+                    return [];
                 }
+                
+                // Utiliser directement les données du Excel
+                return initialData;
             }
 
             function fillSelectOptions(selectElement, options) {
                 options.forEach(option => {
-                    const optionElement = document.createElement('option');
-                    optionElement.value = option;
-                    optionElement.textContent = option;
-                    selectElement.appendChild(optionElement);
+                    if (option && option !== 'Non spécifié') {
+                        const optionElement = document.createElement('option');
+                        optionElement.value = option;
+                        optionElement.textContent = option;
+                        selectElement.appendChild(optionElement);
+                    }
                 });
             }
-
-            function generateMockMedications() {
-                const medications = [];
-                const drugNames = [
-                    'Doliprane', 'Amoxicilline', 'Spasfon',
-
-
 
             function renderMedicationCards(medications) {
                 medicationsGrid.innerHTML = '';
@@ -1093,14 +1074,12 @@
                 const endIndex = Math.min(startIndex + itemsPerPage, medications.length);
                 const pageCount = Math.ceil(medications.length / itemsPerPage);
                 
-                // Afficher les médicaments pour la page actuelle
                 for (let i = startIndex; i < endIndex; i++) {
                     const medication = medications[i];
                     const card = createMedicationCard(medication);
                     medicationsGrid.appendChild(card);
                 }
                 
-                // Mettre à jour la pagination
                 renderPagination(pageCount);
             }
             
@@ -1109,7 +1088,6 @@
                 card.className = 'medication-card';
                 card.dataset.id = medication.id;
                 
-                // Déterminer le statut du stock
                 let stockStatus = '';
                 let stockClass = '';
                 
@@ -1156,18 +1134,16 @@
                 
                 return card;
             }
-            
-            // Créer la pagination
+
             function renderPagination(pageCount) {
                 paginationElement.innerHTML = '';
                 
                 if (pageCount <= 1) return;
-                
-                // Bouton précédent
+
                 if (currentPage > 1) {
                     const prevBtn = document.createElement('button');
                     prevBtn.className = 'pagination-btn';
-                    prevBtn.innerHTML = '&laquo;';
+                    prevBtn.innerHTML = '«';
                     prevBtn.addEventListener('click', () => {
                         currentPage--;
                         renderMedicationCards(allMedications);
@@ -1175,9 +1151,7 @@
                     paginationElement.appendChild(prevBtn);
                 }
                 
-                // Boutons de pages
                 for (let i = 1; i <= pageCount; i++) {
-                    // Limiter le nombre de boutons affichés
                     if (
                         i === 1 || 
                         i === pageCount || 
@@ -1203,12 +1177,11 @@
                         paginationElement.appendChild(ellipsis);
                     }
                 }
-                
-                // Bouton suivant
+
                 if (currentPage < pageCount) {
                     const nextBtn = document.createElement('button');
                     nextBtn.className = 'pagination-btn';
-                    nextBtn.innerHTML = '&raquo;';
+                    nextBtn.innerHTML = '»';
                     nextBtn.addEventListener('click', () => {
                         currentPage++;
                         renderMedicationCards(allMedications);
@@ -1216,6 +1189,7 @@
                     paginationElement.appendChild(nextBtn);
                 }
             }
+
             function filterMedications() {
                 const nameFilter = document.getElementById('medication-name').value.toLowerCase();
                 const formFilter = formSelect.value;
@@ -1237,8 +1211,7 @@
                 const medication = allMedications.find(med => med.id === parseInt(id));
                 
                 if (!medication) return;
-                
-                // Déterminer le statut du stock
+
                 let stockStatus = '';
                 let stockColor = '';
                 
@@ -1297,46 +1270,45 @@
                         </button>
                     </div>
                 `;
-                
-                // Afficher la modal
+
                 medicationModal.style.display = 'flex';
             }
 
             async function initialize() {
                 try {
                     loadingElement.style.display = 'flex';
-
                     allMedications = await loadMedicationData();
-
-                    renderMedicationCards(allMedications);
                     
+                    // Remplir les options des sélecteurs
+                    const uniqueForms = [...new Set(allMedications.map(med => med.form))].sort();
+                    const uniquePresentations = [...new Set(allMedications.map(med => med.presentation))].sort();
+                    fillSelectOptions(formSelect, uniqueForms);
+                    fillSelectOptions(presentationSelect, uniquePresentations);
+                    
+                    renderMedicationCards(allMedications);
                     loadingElement.style.display = 'none';
-
                     setupEventListeners();
                 } catch (error) {
-                    console.error("Erreur d'initialisation :", error);
+                    console.error("Erreur d'initialisation:", error);
                     loadingElement.style.display = 'none';
                     alert("Une erreur est survenue lors du chargement des données. Veuillez réessayer plus tard.");
                 }
             }
 
             function setupEventListeners() {
-                // Soumission du formulaire de recherche
                 searchForm.addEventListener('submit', function(e) {
                     e.preventDefault();
                     currentPage = 1;
                     const filteredMedications = filterMedications();
                     renderMedicationCards(filteredMedications);
                 });
-                
-                // Réinitialisation des filtres
+
                 resetButton.addEventListener('click', function() {
                     searchForm.reset();
                     currentPage = 1;
                     renderMedicationCards(allMedications);
                 });
                 
-                // Afficher les détails du médicament
                 medicationsGrid.addEventListener('click', function(e) {
                     if (e.target.classList.contains('view-details')) {
                         const medicationId = e.target.getAttribute('data-id');
@@ -1362,7 +1334,7 @@
             }
 
             initialize();
-        }
+        });
     </script>
 </body>
 </html>

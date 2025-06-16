@@ -145,10 +145,7 @@ class MedecinController {
             return false;
         }
     }
-    
-    /**
-     * Affiche la page de confirmation d'inscription
-     */
+
     public function showConfirmation() {
         // Inclure la vue de confirmation
         require_once __DIR__ . '/../../public/docConfirmation.php';
