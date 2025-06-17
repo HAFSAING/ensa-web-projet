@@ -1089,7 +1089,7 @@ $medecins = $stmt_medecins->fetchAll(PDO::FETCH_COLUMN);
                         <a href="#" class="dropdown-item"><i class="fas fa-user"></i> Mon profil</a>
                         <a href="#" class="dropdown-item"><i class="fas fa-cog"></i> Paramètres</a>
                         <div class="dropdown-divider"></div>
-                        <a href="userConnecter.php?logout=true" class="dropdown-item"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+                        <a href="Deconnection.php" class="dropdown-item"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
                     </div>
                 </div>
             </div>
@@ -1403,6 +1403,24 @@ $medecins = $stmt_medecins->fetchAll(PDO::FETCH_COLUMN);
                 alert('Une erreur est survenue lors de la création du rendez-vous.');
             });
         });
+    </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const userBtn = document.querySelector('.user-btn');
+        const dropdownMenu = document.querySelector('.dropdown-menu');
+
+        userBtn.addEventListener('click', function(event) {
+            event.preventDefault(); // Empêche le comportement par défaut du bouton
+            dropdownMenu.classList.toggle('active'); // Bascule la classe active
+        });
+
+        // Ferme le menu déroulant si l'utilisateur clique en dehors
+        document.addEventListener('click', function(event) {
+            if (!userBtn.contains(event.target) && !dropdownMenu.contains(event.target)) {
+                dropdownMenu.classList.remove('active');
+            }
+        });
+    });
     </script>
 </body>
 </html>

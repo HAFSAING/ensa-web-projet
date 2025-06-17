@@ -1,15 +1,25 @@
 <?php
 session_start();
+if (!isset($_SESSION['medecin_id'])) {
+    header("Location: docConnecter.php");
+    exit();
+}
 
-
-// Inclusion du fichier de connexion à la base de données
 require_once __DIR__ . '/../config/database.php';
 
-
-// Connexion à la base de données
 try {
     $pdo = getDatabaseConnection();
-    
+
+    $medecin_id = $_SESSION['medecin_id'];
+    $stmt_medecin = $pdo->prepare("
+        SELECT m.civilite, m.nom, m.prenom, s.nom AS specialite 
+        FROM medecins m 
+        LEFT JOIN specialites s ON m.specialite_id = s.id 
+        WHERE m.id = ?
+    ");
+    $stmt_medecin->execute([$medecin_id]);
+    $medecin = $stmt_medecin->fetch(PDO::FETCH_ASSOC);
+
     // Requête pour récupérer les rendez-vous du médecin
     $query = "SELECT r.*, p.nom AS patient_nom, p.prenom AS patient_prenom 
               FROM rendez_vous r
@@ -23,12 +33,8 @@ try {
     $rendezvous = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
 } catch (PDOException $e) {
-    die("Erreur lors de la récupération des rendez-vous: " . $e->getMessage());
+    die("Erreur lors de la récupération des données: " . $e->getMessage());
 }
-// Pour débogage - afficher les rendez-vous récupérés
-echo "<pre>";
-print_r($rendezvous);
-echo "</pre>";
 ?>
 
 <!DOCTYPE html>
@@ -64,7 +70,6 @@ echo "</pre>";
             color: var(--text-dark);
         }
 
-        /* Header avec navigation et icônes */
         header {
             background-color: var(--primary-color);
             color: var(--text-light);
@@ -89,7 +94,6 @@ echo "</pre>";
             gap: 1rem;
         }
 
-        /* Navigation principale */
         .main-nav {
             flex-grow: 1;
             display: flex;
@@ -252,7 +256,6 @@ echo "</pre>";
             display: block;
         }
 
-        /* Layout du tableau de bord */
         .dashboard-container {
             display: flex;
             max-width: 1400px;
@@ -340,7 +343,6 @@ echo "</pre>";
             padding: 1.5rem;
         }
 
-        /* Filtres */
         .filters-container {
             display: flex;
             gap: 1rem;
@@ -383,7 +385,6 @@ echo "</pre>";
             background-color: #164455;
         }
 
-        /* Tableau des rendez-vous */
         .appointment-table {
             width: 100%;
             border-collapse: collapse;
@@ -480,7 +481,6 @@ echo "</pre>";
             color: white;
         }
 
-        /* Bouton ajouter rendez-vous */
         .add-appointment-btn {
             background-color: var(--secondary-color);
             color: white;
@@ -500,7 +500,6 @@ echo "</pre>";
             background-color: #1a5a42;
         }
 
-        /* Responsive */
         @media (max-width: 992px) {
             .dashboard-container {
                 flex-direction: column;
@@ -562,7 +561,7 @@ echo "</pre>";
                 margin-bottom: 0.5rem;
             }
         }
-         /* Footer */
+
         footer {
             background-color: var(--primary-color);
             color: var(--text-light);
@@ -688,7 +687,6 @@ echo "</pre>";
             color: var(--accent-color1);
         }
 
-        /* Responsive design pour le footer */
         @media (max-width: 768px) {
             .footer-content {
                 grid-template-columns: 1fr 1fr;
@@ -715,11 +713,9 @@ echo "</pre>";
             }
         }
     </style>
-    <!-- Ajouter Font Awesome pour les icônes -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
 </head>
 <body>
-    <!-- Header avec navigation et icônes -->
     <header>
         <div class="container">
             <div class="header-content">
@@ -767,10 +763,12 @@ echo "</pre>";
 
                 <div class="profile-dropdown">
                     <button class="profile-button">
-                        <div class="profile-avatar">DR</div>
+                        <div class="profile-avatar">
+                            <?= substr($medecin['prenom'] ?? '', 0, 1) . substr($medecin['nom'] ?? '', 0, 1) ?>
+                        </div>
                         <div class="profile-info">
-                            <div class="profile-name">Dr. Robert</div>
-                            <div class="profile-title">Cardiologue</div>
+                            <div class="profile-name"><?= htmlspecialchars($medecin['civilite'] ?? '') . ' ' . htmlspecialchars($medecin['prenom'] ?? '') . ' ' . htmlspecialchars($medecin['nom'] ?? '') ?></div>
+                            <div class="profile-title"><?= htmlspecialchars($medecin['specialite'] ?? 'Spécialité non définie') ?></div>
                         </div>
                         <i class="fas fa-chevron-down" style="margin-left: 10px; font-size: 0.8rem;"></i>
                     </button>
@@ -788,7 +786,6 @@ echo "</pre>";
     </header>
 
     <div class="dashboard-container">
-        <!-- Sidebar -->
         <aside class="sidebar">
             <ul class="sidebar-menu">
                 <li>
@@ -854,7 +851,6 @@ echo "</pre>";
             </ul>
         </aside>
 
-        <!-- Contenu principal -->
         <main class="main-content">
             <div class="dashboard-card">
                 <div class="card-header">
@@ -865,7 +861,6 @@ echo "</pre>";
                     </button>
                 </div>
                 <div class="card-body">
-                    <!-- Filtres -->
                     <div class="filters-container">
                         <div class="filter-group">
                             <label for="status-filter" class="filter-label">Statut</label>
@@ -898,7 +893,6 @@ echo "</pre>";
                         </button>
                     </div>
 
-                    <!-- Tableau des rendez-vous -->
                     <table class="appointment-table">
                         <thead>
                             <tr>
@@ -909,17 +903,12 @@ echo "</pre>";
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="appointments-body">
                             <?php foreach ($rendezvous as $rdv): 
-                                // Formatage de la date et heure
                                 $date_heure = new DateTime($rdv['date_heure']);
                                 $date_formatted = $date_heure->format('d/m/Y');
                                 $heure_formatted = $date_heure->format('H:i');
-                                
-                                // Initiales du patient
                                 $initiales = substr($rdv['patient_prenom'], 0, 1) . substr($rdv['patient_nom'], 0, 1);
-                                
-                                // Classe CSS selon le statut
                                 $status_class = '';
                                 switch ($rdv['statut']) {
                                     case 'confirme':
@@ -936,7 +925,7 @@ echo "</pre>";
                                         break;
                                 }
                             ?>
-                            <tr>
+                            <tr data-status="<?= $rdv['statut'] ?>" data-date="<?= $rdv['date_heure'] ?>" data-patient="<?= htmlspecialchars($rdv['patient_prenom'] . ' ' . $rdv['patient_nom']) ?>">
                                 <td class="appointment-patient-cell">
                                     <div class="appointment-avatar"><?= strtoupper($initiales) ?></div>
                                     <div>
@@ -976,7 +965,7 @@ echo "</pre>";
             </div>
         </main>
     </div>
-     <!-- Footer avec Google Maps et informations de contact -->
+    
     <footer>
         <div class="footer-content">
             <div class="footer-column">
@@ -1040,27 +1029,70 @@ echo "</pre>";
     </footer>
 
     <script>
-        // Script pour la gestion des filtres (à implémenter)
         document.addEventListener('DOMContentLoaded', function() {
             const filterButton = document.querySelector('.filter-button');
             const statusFilter = document.getElementById('status-filter');
             const dateFilter = document.getElementById('date-filter');
             const searchFilter = document.getElementById('search-filter');
-            
-            filterButton.addEventListener('click', function() {
-                // Ici, vous pourriez ajouter la logique de filtrage
-                // Par exemple, faire une requête AJAX ou filtrer côté client
-                console.log('Filtrer par:', {
-                    status: statusFilter.value,
-                    date: dateFilter.value,
-                    search: searchFilter.value
-                });
-            });
-            
-            // Bouton pour ajouter un nouveau rendez-vous
+            const appointmentsBody = document.getElementById('appointments-body');
+            const rows = appointmentsBody.getElementsByTagName('tr');
+
+            function filterAppointments() {
+                const status = statusFilter.value;
+                const dateOption = dateFilter.value;
+                const search = searchFilter.value.toLowerCase();
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                for (let row of rows) {
+                    const rowStatus = row.getAttribute('data-status');
+                    const rowDate = new Date(row.getAttribute('data-date'));
+                    const rowPatient = row.getAttribute('data-patient').toLowerCase();
+
+                    let showRow = true;
+
+                    // Filtre par statut
+                    if (status !== 'all' && rowStatus !== status) {
+                        showRow = false;
+                    }
+
+                    // Filtre par date
+                    if (dateOption !== 'all') {
+                        const rowDayStart = new Date(rowDate);
+                        rowDayStart.setHours(0, 0, 0, 0);
+                        const weekStart = new Date(today);
+                        weekStart.setDate(today.getDate() - today.getDay());
+                        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+
+                        if (dateOption === 'today' && rowDayStart.getTime() !== today.getTime()) {
+                            showRow = false;
+                        } else if (dateOption === 'week' && (rowDate < weekStart || rowDate > new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000))) {
+                            showRow = false;
+                        } else if (dateOption === 'month' && (rowDate < monthStart || rowDate > new Date(today.getFullYear(), today.getMonth() + 1, 0))) {
+                            showRow = false;
+                        } else if (dateOption === 'future' && rowDate < today) {
+                            showRow = false;
+                        } else if (dateOption === 'past' && rowDate >= today) {
+                            showRow = false;
+                        }
+                    }
+
+                    // Filtre par recherche
+                    if (search && !rowPatient.includes(search)) {
+                        showRow = false;
+                    }
+
+                    row.style.display = showRow ? '' : 'none';
+                }
+            }
+
+            filterButton.addEventListener('click', filterAppointments);
+            statusFilter.addEventListener('change', filterAppointments);
+            dateFilter.addEventListener('change', filterAppointments);
+            searchFilter.addEventListener('input', filterAppointments);
+
             const addButton = document.querySelector('.add-appointment-btn');
             addButton.addEventListener('click', function() {
-                // Redirection vers la page de création de rendez-vous
                 window.location.href = 'docNouveauRendezVous.php';
             });
         });

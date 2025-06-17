@@ -206,69 +206,96 @@ $messages = [
             border-radius: 10px;
         }
         
-        /* User Menu */
-        .user-menu {
+        .profile-dropdown {
             position: relative;
+            display: inline-block;
         }
-        
-        .user-btn {
+
+        .profile-button {
             display: flex;
             align-items: center;
-            background: none;
-            border: none;
-            color: var(--text-light);
-            cursor: pointer;
             gap: 0.5rem;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--text-light);
+            border: none;
             padding: 0.5rem 1rem;
             border-radius: 6px;
+            cursor: pointer;
             transition: all 0.3s ease;
         }
-        
-        .user-btn:hover {
-            background-color: rgba(255, 255, 255, 0.1);
+
+        .profile-button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
         }
-        
-        .user-avatar {
-            width: 40px;
-            height: 40px;
+
+        .profile-avatar {
+            width: 35px;
+            height: 35px;
             border-radius: 50%;
             background-color: var(--accent-color1);
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            color: var(--primary-color);
+            font-size: 1.2rem;
         }
-        
-        .user-info {
-            display: flex;
-            flex-direction: column;
+
+        .profile-info {
             text-align: left;
         }
-        
-        .user-name {
+
+        .profile-name {
             font-weight: 600;
+            font-size: 0.9rem;
         }
-        
-        .user-role {
+
+        .profile-title {
             font-size: 0.8rem;
             opacity: 0.8;
         }
-        
-        .dropdown-menu {
+
+        .dropdown-content {
+            display: none;
             position: absolute;
-            top: 100%;
             right: 0;
+            top: 100%;
+            min-width: 200px;
             background-color: white;
             box-shadow: var(--shadow);
             border-radius: 8px;
-            width: 200px;
+            padding: 0.5rem 0;
+            z-index: 1;
             margin-top: 0.5rem;
-            display: none;
-            z-index: 100;
         }
-        
-        .dropdown-menu.active {
+
+        .dropdown-content a {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            color: var(--text-dark);
+            text-decoration: none;
+            padding: 0.7rem 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .dropdown-content a:hover {
+            background-color: var(--light-bg);
+            color: var(--primary-color);
+        }
+
+        .dropdown-content a i {
+            color: var(--secondary-color);
+            width: 20px;
+            text-align: center;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background-color: var(--border-color);
+            margin: 0.5rem 0;
+        }
+
+        .profile-dropdown:hover .dropdown-content {
             display: block;
         }
         
@@ -921,21 +948,22 @@ $messages = [
                         <li class="nav-item"><a href="userStatistique.php" class="nav-link"><i class="fas fa-chart-bar"></i> Statistiques</a></li>
                     </ul>
                 </nav>
-                <div class="user-menu">
-                    <button class="user-btn">
-                        <div class="user-avatar">
+                <div class="profile-dropdown">
+                    <button class="profile-button">
+                        <div class="profile-avatar">
                             <?= substr($patient['prenom'], 0, 1) . substr($patient['nom'], 0, 1) ?>
                         </div>
-                        <div class="user-info">
-                            <span class="user-name"><?= htmlspecialchars($patient['prenom'] . ' ' . $patient['nom']) ?></span>
-                            <span class="user-role">Patient</span>
+                        <div class="profile-info">
+                            <div class="profile-name"><?= htmlspecialchars($patient['prenom'] . ' ' . $patient['nom']) ?></div>
+                            <div class="profile-title">Patient</div>
                         </div>
+                        <i class="fas fa-chevron-down" style="margin-left: 10px; font-size: 0.8rem;"></i>
                     </button>
-                    <div class="dropdown-menu">
+                    <div class="dropdown-content">
                         <a href="#" class="dropdown-item"><i class="fas fa-user"></i> Mon profil</a>
                         <a href="#" class="dropdown-item"><i class="fas fa-cog"></i> Paramètres</a>
                         <div class="dropdown-divider"></div>
-                        <a href="#" class="dropdown-item"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+                        <a href="Deconnection.php" class="dropdown-item" style="color: #d32f2f;"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
                     </div>
                 </div>
             </div>
@@ -1102,5 +1130,23 @@ $messages = [
     </footer>    
     <!-- Font Awesome -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const userBtn = document.querySelector('.user-btn');
+        const dropdownMenu = document.querySelector('.dropdown-menu');
+
+        userBtn.addEventListener('click', function(event) {
+            event.preventDefault(); // Empêche le comportement par défaut du bouton
+            dropdownMenu.classList.toggle('active'); // Bascule la classe active
+        });
+
+        // Ferme le menu déroulant si l'utilisateur clique en dehors
+        document.addEventListener('click', function(event) {
+            if (!userBtn.contains(event.target) && !dropdownMenu.contains(event.target)) {
+                dropdownMenu.classList.remove('active');
+            }
+        });
+    });
+    </script>
 </body>
 </html>

@@ -1,36 +1,57 @@
 <?php
 session_start();
 
-
-// Inclusion du fichier de connexion à la base de données
 require_once __DIR__ . '/../config/database.php';
 
-// Récupération de la connexion à la base de données
 $pdo = getDatabaseConnection();
 
-// Initialisation des variables de pagination
+try {
+
+    $medecin_id = $_SESSION['medecin_id'];
+    $stmt_medecin = $pdo->prepare("
+        SELECT m.civilite, m.nom, m.prenom, s.nom AS specialite 
+        FROM medecins m 
+        LEFT JOIN specialites s ON m.specialite_id = s.id 
+        WHERE m.id = ?
+    ");
+    $stmt_medecin->execute([$medecin_id]);
+    $medecin = $stmt_medecin->fetch(PDO::FETCH_ASSOC);
+
+    // Requête pour récupérer les rendez-vous du médecin
+    $query = "SELECT r.*, p.nom AS patient_nom, p.prenom AS patient_prenom 
+              FROM rendez_vous r
+              JOIN patients p ON r.patient_id = p.id
+              WHERE r.medecin_id = :medecin_id
+              ORDER BY r.date_heure DESC";
+    
+    $stmt = $pdo->prepare($query);
+    $stmt->bindParam(':medecin_id', $medecin_id, PDO::PARAM_INT);
+    $stmt->execute();
+    $rendezvous = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+} catch (PDOException $e) {
+    die("Erreur lors de la récupération des données: " . $e->getMessage());
+}
+
+
 $patientsParPage = 10;
 $pageCourante = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $debut = ($pageCourante - 1) * $patientsParPage;
 
-// Initialisation des variables de recherche
 $recherche = isset($_GET['recherche']) ? $_GET['recherche'] : '';
 $filtre = isset($_GET['filtre']) ? $_GET['filtre'] : 'tous';
 
-// Construction de la requête SQL de base
 $sql = "SELECT p.*, v.nom as ville_nom 
         FROM patients p 
         LEFT JOIN villes v ON p.ville_id = v.id 
         WHERE 1=1";
 $params = [];
 
-// Ajouter les conditions de recherche si nécessaire
 if (!empty($recherche)) {
     $sql .= " AND (p.nom LIKE :recherche OR p.prenom LIKE :recherche OR p.cin LIKE :recherche OR p.email LIKE :recherche)";
     $params[':recherche'] = "%$recherche%";
 }
 
-// Ajouter le filtre si nécessaire
 if ($filtre === 'actifs') {
     $sql .= " AND p.statut = 'actif'";
 } elseif ($filtre === 'en_attente') {
@@ -39,7 +60,6 @@ if ($filtre === 'actifs') {
     $sql .= " AND p.statut = 'suspendu'";
 }
 
-// Compter le nombre total de patients pour la pagination
 $sqlCount = str_replace("SELECT p.*, v.nom as ville_nom", "SELECT COUNT(*)", $sql);
 $stmtCount = $pdo->prepare($sqlCount);
 foreach ($params as $key => $val) {
@@ -49,12 +69,10 @@ $stmtCount->execute();
 $totalPatients = $stmtCount->fetchColumn();
 $totalPages = ceil($totalPatients / $patientsParPage);
 
-// Ajouter la pagination à la requête principale
 $sql .= " ORDER BY p.nom ASC LIMIT :debut, :nb_par_page";
 $params[':debut'] = $debut;
 $params[':nb_par_page'] = $patientsParPage;
 
-// Exécuter la requête
 $stmt = $pdo->prepare($sql);
 foreach ($params as $key => $val) {
     // Gestion spéciale pour les entiers dans la limite LIMIT
@@ -67,7 +85,6 @@ foreach ($params as $key => $val) {
 $stmt->execute();
 $patients = $stmt->fetchAll();
 
-// Récupérer les consultations pour chaque patient
 function getConsultationsPatient($pdo, $patientId) {
     $sql = "SELECT COUNT(*) FROM consultations WHERE patient_id = :patient_id";
     $stmt = $pdo->prepare($sql);
@@ -76,7 +93,6 @@ function getConsultationsPatient($pdo, $patientId) {
     return $stmt->fetchColumn();
 }
 
-// Récupérer la dernière consultation pour un patient
 function getDerniereConsultation($pdo, $patientId) {
     $sql = "SELECT date_consultation FROM consultations 
             WHERE patient_id = :patient_id AND statut = 'terminee'
@@ -88,7 +104,6 @@ function getDerniereConsultation($pdo, $patientId) {
     return $result ? $result['date_consultation'] : null;
 }
 
-// Fonction pour calculer l'âge à partir de la date de naissance
 function calculerAge($dateNaissance) {
     $aujourdHui = new DateTime();
     $dateNaissanceObj = new DateTime($dateNaissance);
@@ -96,7 +111,6 @@ function calculerAge($dateNaissance) {
     return $difference->y;
 }
 
-// Fonction pour générer une classe d'indicateur de santé aléatoire (à remplacer par logique réelle)
 function getHealthIndicator($patientId) {
     $options = ['health-excellent', 'health-good', 'health-fair', 'health-poor'];
     $rand = $patientId % 4;
@@ -325,7 +339,6 @@ function getHealthIndicator($patientId) {
             display: block;
         }
 
-        /* Main content */
         .main-container {
             max-width: 1400px;
             margin: 2rem auto;
@@ -628,7 +641,6 @@ function getHealthIndicator($patientId) {
             transform: scale(1.1);
         }
 
-        /* Pagination */
         .pagination {
             display: flex;
             justify-content: center;
@@ -671,7 +683,6 @@ function getHealthIndicator($patientId) {
             pointer-events: none;
         }
 
-        /* Responsive */
         @media (max-width: 992px) {
             .filters-container {
                 flex-direction: column;
@@ -827,7 +838,6 @@ function getHealthIndicator($patientId) {
             gap: 1rem;
         }
 
-        /* Styles pour les alertes */
         .alert {
             padding: 1rem;
             border-radius: 8px;
@@ -1008,7 +1018,6 @@ function getHealthIndicator($patientId) {
             color: var(--accent-color1);
         }
 
-        /* Responsive design pour le footer */
         @media (max-width: 768px) {
             .footer-content {
                 grid-template-columns: 1fr 1fr;
@@ -1035,11 +1044,9 @@ function getHealthIndicator($patientId) {
             }
         }
     </style>
-    <!-- Ajouter Font Awesome pour les icônes -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
 </head>
 <body>
-    <!-- Header avec navigation et icônes -->
     <header>
         <div class="container">
             <div class="header-content">
@@ -1087,10 +1094,12 @@ function getHealthIndicator($patientId) {
 
                 <div class="profile-dropdown">
                     <button class="profile-button">
-                        <div class="profile-avatar">DR</div>
+                        <div class="profile-avatar">
+                            <?= substr($medecin['prenom'] ?? '', 0, 1) . substr($medecin['nom'] ?? '', 0, 1) ?>
+                        </div>
                         <div class="profile-info">
-                            <div class="profile-name">Dr. Robert</div>
-                            <div class="profile-title">Cardiologue</div>
+                            <div class="profile-name"><?= htmlspecialchars($medecin['civilite'] ?? '') . ' ' . htmlspecialchars($medecin['prenom'] ?? '') . ' ' . htmlspecialchars($medecin['nom'] ?? '') ?></div>
+                            <div class="profile-title"><?= htmlspecialchars($medecin['specialite'] ?? 'Spécialité non définie') ?></div>
                         </div>
                         <i class="fas fa-chevron-down" style="margin-left: 10px; font-size: 0.8rem;"></i>
                     </button>
@@ -1108,7 +1117,6 @@ function getHealthIndicator($patientId) {
     </header>
 
     <div class="main-container">
-        <!-- En-tête de page -->
         <div class="page-header">
             <h1 class="page-title">Gestion des Patients</h1>
             <div class="action-buttons">
@@ -1330,7 +1338,6 @@ function getHealthIndicator($patientId) {
     </div>
     <?php endif; ?>
 
-    <!-- Modal Ajouter un patient -->
     <div id="addPatientModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1520,8 +1527,8 @@ function getHealthIndicator($patientId) {
             </form>
         </div>
     </div>
-     <!-- Footer avec Google Maps et informations de contact -->
-    <footer>
+
+      <footer>
         <div class="footer-content">
             <div class="footer-column">
                 <h3>MediStatView</h3>
