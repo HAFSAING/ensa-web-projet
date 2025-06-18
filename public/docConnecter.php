@@ -16,7 +16,6 @@ $error_message = isset($_SESSION['login_error']) ? $_SESSION['login_error'] : ""
 unset($_SESSION['login_error']);
 
 try {
-    // Obtenir la connexion via database.php
     $pdo = getDatabaseConnection();
     
     // Vérification si le formulaire a été soumis
@@ -38,11 +37,9 @@ try {
             } else {
                 $stmt = $pdo->prepare("SELECT id, nom, prenom, email, password, statut FROM medecins WHERE num_inpe = :username");
             }
-            
-            // Liaison des paramètres de manière sécurisée
+
             $stmt->bindParam(':username', $username, PDO::PARAM_STR);
-            
-            // Exécution de la requête
+
             $stmt->execute();
     
             // Récupération du médecin
