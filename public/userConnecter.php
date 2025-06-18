@@ -49,8 +49,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmt->execute([$username]);
             $patient = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            // Vérifier si le patient existe et si le mot de passe est correct
-            // Vérifier si le patient existe et si le mot de passe est correct
+
             if ($patient && $password === $patient['password'])  {
                 if ($patient['statut'] === 'en_attente') {
                     $error_message = "Votre compte est en attente de validation. Veuillez patienter ou contacter le support.";
@@ -84,7 +83,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         setcookie('remember_patient', $token, time() + (86400 * 30), "/", "", true, true);
                     }
 
-                    // Redirection vers le tableau de bord et sortie du script
                     header("Location: userDashboard.php");
                     exit();
                 }
@@ -105,7 +103,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 
-// Vérification si un cookie de rappel existe
 if (!isset($_SESSION['patient_id']) && isset($_COOKIE['remember_patient'])) {
     try {
         $stmt = $pdo->prepare("SELECT id, nom, prenom, email, statut FROM patients WHERE remember_token = ?");
@@ -113,18 +110,15 @@ if (!isset($_SESSION['patient_id']) && isset($_COOKIE['remember_patient'])) {
         $patient = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($patient && $patient['statut'] === 'actif') {
-            // Mise à jour de la date de dernière connexion
             $update_stmt = $pdo->prepare("UPDATE patients SET last_login_at = NOW() WHERE id = ?");
             $update_stmt->execute([$patient['id']]);
-            
-            // Stockage des informations de session
+
             $_SESSION['patient_id'] = $patient['id'];
             $_SESSION['patient_nom'] = $patient['nom'];
             $_SESSION['patient_prenom'] = $patient['prenom'];
             $_SESSION['patient_email'] = $patient['email'];
             $_SESSION['user_type'] = 'patient';
-            
-            // Redirection vers le tableau de bord
+
             header("Location: userdashboard.php");
             exit();
         }
@@ -405,7 +399,6 @@ if (!isset($_SESSION['patient_id']) && isset($_COOKIE['remember_patient'])) {
             flex-shrink: 0;
         }
 
-        /* Media Queries pour la responsivité */
         @media (max-width: 900px) {
             .portal-container {
                 max-width: 90%;
@@ -574,20 +567,17 @@ if (!isset($_SESSION['patient_id']) && isset($_COOKIE['remember_patient'])) {
     bottom: -30px;
 }
 
-/* Animation au focus pour l'accessibilité */
 .sidebar-logo a:focus {
     outline: 3px rgba(255, 255, 255, 0.5);
     outline-offset: 2px;
     border-radius: 12px;
 }
 
-/* Effet de clic */
 .sidebar-logo:active {
     transform: translateY(0) scale(0.98);
     transition: all 0.1s ease;
 }
 
-/* Ajustements responsive */
 @media (max-width: 768px) {
     .sidebar-logo {
         margin-bottom: 20px;
@@ -615,7 +605,6 @@ if (!isset($_SESSION['patient_id']) && isset($_COOKIE['remember_patient'])) {
     }
 }
 
-/* Animation d'entrée pour le logo */
 @keyframes logoFadeIn {
     from {
         opacity: 0;
